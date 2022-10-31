@@ -1,3 +1,4 @@
+from email.message import EmailMessage
 import email
 import email.policy
 import fnmatch
@@ -29,7 +30,7 @@ class SaveRule(BaseModel):
     # variables can be used here. The location must already exist.
     save_to: str
 
-    def matches(self, msg):
+    def matches(self, msg: EmailMessage):
         result = True
 
         from_parts = email.utils.parseaddr(msg["from"])
@@ -50,6 +51,8 @@ class SaveRule(BaseModel):
 
             any_match = False
             for value in values:
+                if not value:
+                    continue
                 if match_field(_try, value):
                     any_match = True
                     break
