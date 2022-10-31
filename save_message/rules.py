@@ -1,4 +1,4 @@
-import email
+from email.message import EmailMessage
 import email.policy
 import logging
 import os
@@ -8,6 +8,7 @@ import sys
 
 import ruamel.yaml
 
+from save_message.config import Config
 from save_message.config import DEFAULT_SAVE_TO
 from save_message.model import SaveRule
 
@@ -17,10 +18,12 @@ logger = logging.getLogger(__name__)
 class RulesMatcher:
     """Manages matching messages to the loaded rules"""
 
-    def __init__(self, config):
+    def __init__(self, config: Config):
         self.config = config
 
-    def match_save_rule_or_prompt(self, msg, prompt_save_dir_command=None):
+    def match_save_rule_or_prompt(
+        self, msg: EmailMessage, prompt_save_dir_command: str = None
+    ):
         """Find all save rules in the config that match the given message,
         or run prompt_save_dir_command instead if specified."""
 
@@ -59,11 +62,13 @@ class RulesMatcher:
 
 
 class RulesAdder:
-    def add_save_rule(self, cfg_file, input_files):
+    def add_save_rule(self, cfg_file: str, input_files: list[str]):
         yaml = ruamel.yaml.YAML()
+
         yaml.indent(mapping=4, sequence=4, offset=2)
         yaml.default_flow_style = False
         yaml.preserve_quotes = True
+
         with open(cfg_file, "r") as fc:
             new_config = yaml.load(fc)
 
