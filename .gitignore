@@ -1,0 +1,7 @@
+*.pyc
+__pycache__
+
+scan-results*
+scan-requests
+src/aaas_shared
+vendor/*
