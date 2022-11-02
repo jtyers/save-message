@@ -1,4 +1,6 @@
 from datetime import datetime
+from email.message import EmailMessage
+from email.message import MIMEPart
 import email
 import email.policy
 import mimetypes
@@ -9,7 +11,8 @@ import subprocess
 import tempfile
 
 from save_message.config import DEFAULT_SAVE_TO
-from save_message.match import match_save_rule_or_prompt
+from save_message.rules import RulesMatcher
+from save_message.model import Config
 
 logger = logging.getLogger(__name__)
 
@@ -31,31 +34,45 @@ def guess_ext_for_part(part):
     return ext
 
 
-class MessageSaver:
+def get_filename_for_part(message_name: str, part: MIMEPart, counter: int):
+    filename = part.get_filename()
+
+    if filename:
+        if "." in filename:
+            ext = filename[filename.index(".") :]
+            filename = sanitize_to_filename(filename[: filename.index(".")]) + ext
+
+        else:
+            ext = guess_ext_for_part(part)
+            filename = sanitize_to_filename(filename) + ext
+
+    else:
+        ext = guess_ext_for_part(part)
+        filename = f"{message_name}-{counter:02d}{ext}"
+
+    return filename
+
+
+class MessagePartSaver:
     """Saves messages, optionally with some transformations, to a configured
     destination."""
 
-    def __init__(self, config):
+    def __init__(self, config: Config):
         self.config = config
 
-    def save_part(self, msg, part, message_name, dest_dir, counter):
+    def save_part(
+        self,
+        msg: EmailMessage,
+        part: MIMEPart,
+        message_name: str,
+        dest_dir: str,
+        counter: int,
+    ):
         # multipart/* are just containers
         if part.get_content_maintype() == "multipart":
             return
 
-        filename = part.get_filename()
-        if filename:
-            filename = sanitize_to_filename(filename)
-
-            if "." in filename:
-                ext = filename[filename.index(".")]
-            else:
-                ext = guess_ext_for_part(part)
-                filename = filename + ext
-
-        else:
-            ext = guess_ext_for_part(part)
-            filename = f"{message_name}-{counter:03d}{ext}"
+        filename = get_filename_for_part(message_name, part, counter)
 
         counter += 1
         dest_filename = os.path.join(dest_dir, filename)
@@ -77,7 +94,22 @@ class MessageSaver:
             dest_pdffilename = dest_filename[: -len(ext)] + ".pdf"
             subprocess.run(["prince", dest_filename, "-o", dest_pdffilename])
 
-    def save_message(self, input_file, prompt_save_dir_command=None):
+
+class MessageSaver:
+    """Saves messages, optionally with some transformations, to a configured
+    destination."""
+
+    def __init__(
+        self,
+        config: Config,
+        message_part_saver: MessagePartSaver,
+        rules_matcher: RulesMatcher,
+    ):
+        self.config = config
+        self.message_part_saver = message_part_saver
+        self.rules_matcher = rules_matcher
+
+    def save_message(self, input_file: str, prompt_save_dir_command: str = None):
         """Save the message in `input_file`, using rules to determine
         where to save. If prompt_save_dir_command is specified, that is treated
         as a command to run to determine the save location instead (generally it's
@@ -105,7 +137,9 @@ class MessageSaver:
             name_date = date.strftime("%b%y")
             message_name = f"{name_from} {subject} {name_date}"
 
-            matching_rules = match_save_rule_or_prompt(msg, prompt_save_dir_command)
+            matching_rules = self.rules_matcher.match_save_rule_or_prompt(
+                msg, prompt_save_dir_command
+            )
             logger.debug("matching_rules: %s", matching_rules)
             rule = None
 
@@ -133,6 +167,7 @@ class MessageSaver:
                     counter=counter,
                     dest_dir=dest_dir,
                 )
+                counter += 1
 
             # finally, re-read the raw input and write it to a file in the new directory
             fp.seek(0)
