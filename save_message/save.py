@@ -3,6 +3,7 @@ from email.message import EmailMessage
 from email.message import MIMEPart
 import email
 import email.policy
+from io import TextIOWrapper
 import mimetypes
 import logging
 import os
@@ -50,7 +51,19 @@ def get_filename_for_part(message_name: str, part: MIMEPart, counter: int):
         ext = guess_ext_for_part(part)
         filename = f"{message_name}-{counter:02d}{ext}"
 
-    return filename
+    return filename, ext
+
+
+def get_message_name(msg):
+    subject = sanitize_to_filename(msg["subject"])
+
+    from_parts = email.utils.parseaddr(msg["from"])
+    date = datetime.strptime(msg["date"], "%a, %d %b %Y %H:%M:%S %z")
+
+    name_from = from_parts[0] or from_parts[1]
+    name_date = date.strftime("%b%y")
+
+    return f"{name_from} {subject} {name_date}"
 
 
 class MessagePartSaver:
@@ -72,7 +85,7 @@ class MessagePartSaver:
         if part.get_content_maintype() == "multipart":
             return
 
-        filename = get_filename_for_part(message_name, part, counter)
+        filename, ext = get_filename_for_part(message_name, part, counter)
 
         counter += 1
         dest_filename = os.path.join(dest_dir, filename)
@@ -109,7 +122,9 @@ class MessageSaver:
         self.message_part_saver = message_part_saver
         self.rules_matcher = rules_matcher
 
-    def save_message(self, input_file: str, prompt_save_dir_command: str = None):
+    def save_message(
+        self, input_file: TextIOWrapper, prompt_save_dir_command: str = None
+    ):
         """Save the message in `input_file`, using rules to determine
         where to save. If prompt_save_dir_command is specified, that is treated
         as a command to run to determine the save location instead (generally it's
@@ -128,14 +143,7 @@ class MessageSaver:
             msg = email.message_from_file(fp, policy=email.policy.default)
             # verbose_msg(msg)
 
-            subject = sanitize_to_filename(msg["subject"])
-
-            from_parts = email.utils.parseaddr(msg["from"])
-            date = datetime.strptime(msg["date"], "%a, %d %b %Y %H:%M:%S %z")
-
-            name_from = from_parts[0] or from_parts[1]
-            name_date = date.strftime("%b%y")
-            message_name = f"{name_from} {subject} {name_date}"
+            message_name = get_message_name(msg)
 
             matching_rules = self.rules_matcher.match_save_rule_or_prompt(
                 msg, prompt_save_dir_command
@@ -160,7 +168,7 @@ class MessageSaver:
 
             counter = 1
             for part in msg.walk():
-                self.save_part(
+                self.message_part_saver.save_part(
                     msg=msg,
                     part=part,
                     message_name=message_name,

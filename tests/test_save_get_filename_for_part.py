@@ -12,14 +12,17 @@ from subprocess import CompletedProcess
 
 
 def run_get_filename_for_part_test(
-    message_name, part_name, part_content_type, counter, expected
+    message_name, part_name, part_content_type, counter, expected, expected_ext
 ):
     part = MagicMock(spec=MIMEPart)
     part.get_filename.return_value = part_name
     part.get_content_type.return_value = part_content_type
     part.get_content_maintype.return_value = part_content_type.split("/")[0]
 
-    assert get_filename_for_part(message_name, part, counter) == expected
+    assert get_filename_for_part(message_name, part, counter) == (
+        expected,
+        expected_ext,
+    )
 
 
 def test_get_filename_for_part_text_file():
@@ -29,6 +32,7 @@ def test_get_filename_for_part_text_file():
         "text/plain",
         1,
         expected="my-part.txt",
+        expected_ext=".txt",
     )
 
 
@@ -39,6 +43,7 @@ def test_get_filename_for_part_html_file():
         "text/html",
         1,
         expected="my-part.html",
+        expected_ext=".html",
     )
 
 
@@ -49,6 +54,7 @@ def test_get_filename_for_part_honours_existing_extensions():
         "text/html",
         1,
         expected="my-part.pdf",
+        expected_ext=".pdf",
     )
 
 
@@ -59,6 +65,7 @@ def test_get_filename_for_part_unknown_type_goes_to_bin():
         "foo/bar",
         1,
         expected="my-part.bin",
+        expected_ext=".bin",
     )
 
 
@@ -69,4 +76,5 @@ def test_get_filename_for_part_no_filename_uses_counter():
         "text/plain",
         10,
         expected="my-message-10.txt",
+        expected_ext=".txt",
     )

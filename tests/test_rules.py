@@ -31,7 +31,7 @@ def test_match_without_prompt():
         new_non_matching_rule(),
     ]
 
-    msg = create_message()
+    msg = create_message(template="simple_text_only")
 
     rules_matcher = RulesMatcher(config)
     result = rules_matcher.match_save_rule_or_prompt(msg)
@@ -48,7 +48,7 @@ def test_match_with_prompt(subprocess_run):
         new_non_matching_rule(),
     ]
 
-    msg = create_message()
+    msg = create_message(template="simple_text_only")
 
     prompt_response = "foo"
 
@@ -73,7 +73,7 @@ def test_match_with_prompt_multiline_only_uses_first_line_of_output(subprocess_r
         new_non_matching_rule(),
     ]
 
-    msg = create_message()
+    msg = create_message(template="simple_text_only")
 
     prompt_response = """foo
 bar"""
@@ -99,7 +99,7 @@ def test_match_with_prompt_no_output_raises(subprocess_run):
         new_non_matching_rule(),
     ]
 
-    msg = create_message()
+    msg = create_message(template="simple_text_only")
 
     prompt_response = ""
 
