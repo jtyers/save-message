@@ -1,16 +1,15 @@
 import email
+from email.message import EmailMessage
 import os
 import pytest
 import shutil
 import tempfile
 
 from unittest.mock import MagicMock
-from unittest.mock import call
 
 from .context import save_message  # noqa: F401
 from tests.util import assert_file_has_content
-from tests.util import as_file
-from tests.util import create_message_string
+from tests.util import create_message
 
 from save_message.model import Config
 from save_message.rules import RulesMatcher
@@ -28,14 +27,23 @@ from save_message.save import MessageSaver
 
 
 @pytest.fixture
-def temp_save_dir():
+def temp_save_dir() -> str:
     result = tempfile.mkdtemp()
     yield result
 
     shutil.rmtree(result)
 
 
-def test_do_test_message_saver(temp_save_dir):
+def do_test_message_saver(
+    temp_save_dir: str,
+    message: EmailMessage,
+    check_eml_file: bool,
+    check_part_files: dict = {},
+    check_part_binary_files: dict = {},
+):
+    """Run the test to save the given message, then verify the .eml file is present and correct, then verify particular payload files have been created.
+
+    check_part_files should be a dict of filename -> payload (as str)."""
     # given
     # use real MessagePartSaver - we consciously test both here,
     # as comparing Message/EmailMessage instances in mocks is hard
@@ -46,27 +54,21 @@ def test_do_test_message_saver(temp_save_dir):
 
     rules_matcher = MagicMock(spec=RulesMatcher)
 
-    message_string = create_message_string(template="simple_text_only")
-    message = email.message_from_string(message_string, policy=email.policy.default)
-
     # when
     message_saver = MessageSaver(config, message_part_saver, rules_matcher)
     message_saver.save_message(message)
 
     # then
 
-    # print([(x.get_payload(), x.get_content_type()) for x in message.walk()])
-    # print(os.listdir(temp_save_dir))
-    # print(os.listdir(temp_save_dir + "/" + os.listdir(temp_save_dir)[0]))
-
     message_name = get_message_name(message)
     message_save_dir = os.path.join(temp_save_dir, message_name)
+    message_eml_file = os.path.join(message_save_dir, f"{message_name}.eml")
 
-    with open(os.path.join(message_save_dir, message_name + ".eml"), "r") as wf:
+    with open(message_eml_file, "r") as wf:
         written_message = email.message_from_file(wf, policy=email.policy.default)
         for k, v in written_message.items():
             # these headers get reformatted/changed for some reason
-            if k in ["Received"]:
+            if k in ["Received", "Authentication-Results", "DKIM-Signature"]:
                 continue
 
             assert message[k].strip() == v.strip()
@@ -75,10 +77,80 @@ def test_do_test_message_saver(temp_save_dir):
             p.get_payload(decode=True) for p in written_message.walk()
         ]
 
-    assert_file_has_content(
-        os.path.join(message_save_dir, message_name + "-02.txt"),
-        "\n".join(
-            [f"{h}: {message[h.lower()]}" for h in ["Date", "From", "To", "Subject"]]
-            + ["", list(message.walk())[1].get_payload(decode=True).decode("utf-8")]
-        ),
+    # now check the full list of files is what we expect (we do this before
+    # checking payloads as its helpful to get this error earlier)
+    expected_files = list(check_part_files.keys()) + list(
+        check_part_binary_files.keys()
+    )
+    if check_eml_file:
+        expected_files.append(f"{message_name}.eml")
+    expected_files.sort()
+
+    actual_files = os.listdir(message_save_dir)
+    actual_files.sort()
+
+    assert actual_files == expected_files
+
+    # finally, check file contents for each file specified, first in
+    # text mode then in binary mode
+    for filename, payload in check_part_files.items():
+        assert_file_has_content(
+            os.path.join(message_save_dir, filename),
+            payload,
+        )
+
+    for filename, payload in check_part_binary_files.items():
+        assert_file_has_content(
+            os.path.join(message_save_dir, filename),
+            payload,
+            binary=True,
+        )
+
+
+def get_header_preamble(message):
+    return [f"{h}: {message[h.lower()]}" for h in ["Date", "From", "To", "Subject"]]
+
+
+def test_simple_text_body_no_atts(temp_save_dir):
+    message = create_message(template="simple_text_only")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=True,
+        check_part_files={
+            f"{message_name}-02.txt": "\n".join(
+                get_header_preamble(message)
+                + ["", message_parts[1].get_payload(decode=True).decode("utf-8")]
+            ),
+        },
+    )
+
+
+def test_html_body_ics_att(temp_save_dir):
+    message = create_message(template="text_html_with_calendar_attachment")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=True,
+        check_part_files={
+            f"{message_name}-04.html": "\n".join(
+                get_header_preamble(message)
+                + ["", message_parts[3].get_payload(decode=True).decode("utf-8")]
+            ),
+            f"{message_name}-03.txt": "\n".join(
+                get_header_preamble(message)
+                + ["", message_parts[2].get_payload(decode=True).decode("utf-8")]
+            ),
+            f"{message_name}-05.bin": "\n".join(
+                get_header_preamble(message)
+                + ["", message_parts[4].get_payload(decode=True).decode("utf-8")]
+            ),
+            "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
+        },
     )

@@ -177,6 +177,6 @@ class MessageSaver:
 
         # finally, write the entire message to a file in the new directory
         message_file_name = f"{message_name}.eml"
-        with open(os.path.join(dest_dir, message_file_name), "w") as f:
-            f.write(msg.as_string())
+        with open(os.path.join(dest_dir, message_file_name), "wb") as f:
+            f.write(msg.as_bytes())
             logger.debug("saved %s", message_file_name)

@@ -179,65 +179,65 @@ t=3D"text/html; charset=3DUTF-8"><meta name=3D"viewport" content=3D"width=
 =3Ddevice-width,initial-scale=3D1"><meta name=3D"color-scheme" content=3D"l=
 ight dark"><meta name=3D"supported-color-schemes" content=3D"light dark">
     <style>
-      body, html {
+      body, html {{
         font-family: Roboto, Helvetica, Arial, sans-serif;
-      }
+      }}
 
-      body {
+      body {{
         margin: 0;
         padding: 0;
         -webkit-font-smoothing: antialiased;
         -webkit-text-size-adjust: 100%;
         -ms-text-size-adjust: 100%;
-      }
+      }}
 
-      #outlook a {
+      #outlook a {{
         padding: 0;
-      }
+      }}
 
-      .ReadMsgBody {
+      .ReadMsgBody {{
         width: 100%;
-      }
+      }}
 
-      .ExternalClass {
+      .ExternalClass {{
         width: 100%;
-      }
+      }}
 
-      .ExternalClass * {
+      .ExternalClass * {{
         line-height: 100%;
-      }
+      }}
 
       table,
-      td {
+      td {{
         mso-table-lspace: 0pt;
         mso-table-rspace: 0pt;
-      }
+      }}
 
-      img {
+      img {{
         border: 0;
         height: auto;
         line-height: 100%;
         outline: none;
         text-decoration: none;
         -ms-interpolation-mode: bicubic;
-      }
+      }}
 
-      p {
+      p {{
         display: block;
         margin: 13px 0;
-      }
+      }}
     </style>
     <!--[if !mso]><!-->
     <style>
-      @media only screen and (max-width:580px) {
-        @-ms-viewport {
+      @media only screen and (max-width:580px) {{
+        @-ms-viewport {{
           width: 320px;
-        }
+        }}
 
-        @viewport {
+        @viewport {{
           width: 320px;
-        }
-      }
+        }}
+      }}
     </style>
     <!--<![endif]-->
     <!--[if mso]>
@@ -250,49 +250,49 @@ ight dark"><meta name=3D"supported-color-schemes" content=3D"light dark">
           <![endif]-->
     <!--[if lte mso 11]>
           <style>
-            .outlook-group-fix { width:100% !important; }
+            .outlook-group-fix {{ width:100% !important; }}
           </style>
     <![endif]-->
 
     <!--[if !mso]><!-- -->
-  <style>body, html {font-family:Roboto,Helvetica,Arial,sans-serif;}@font-f=
-ace {
+  <style>body, html {{font-family:Roboto,Helvetica,Arial,sans-serif;}}@font-f=
+ace {{
   font-family: 'Roboto';
   font-style: normal;
   font-weight: 400;
   src: url(//fonts.gstatic.com/s/roboto/v18/KFOmCnqEu92Fr1Mu4mxP.ttf) forma=
 t('truetype');
-}
-@font-face {
+}}
+@font-face {{
   font-family: 'Roboto';
   font-style: normal;
   font-weight: 500;
   src: url(//fonts.gstatic.com/s/roboto/v18/KFOlCnqEu92Fr1MmEU9fBBc9.ttf) f=
 ormat('truetype');
-}
-@font-face {
+}}
+@font-face {{
   font-family: 'Roboto';
   font-style: normal;
   font-weight: 700;
   src: url(//fonts.gstatic.com/s/roboto/v18/KFOlCnqEu92Fr1MmWUlfBBc9.ttf) f=
 ormat('truetype');
-}
-@font-face {
+}}
+@font-face {{
   font-family: 'Material Icons Extended';
   font-style: normal;
   font-weight: 400;
   src: url(//fonts.gstatic.com/s/materialiconsextended/v149/kJEjBvgX7BgnkSr=
 UwT8UnLVc38YydejYY-oE_LvM.ttf) format('truetype');
-}
-@font-face {
+}}
+@font-face {{
   font-family: 'Google Material Icons';
   font-style: normal;
   font-weight: 400;
   src: url(//fonts.gstatic.com/s/googlematerialicons/v129/Gw6kwdfw6UnXLJCcm=
 afZyFRXb3BL9rvi0QZG3g.otf) format('opentype');
-}
+}}
 
-.google-material-icons {
+.google-material-icons {{
   font-family: 'Google Material Icons';
   font-weight: normal;
   font-style: normal;
@@ -304,16 +304,16 @@ afZyFRXb3BL9rvi0QZG3g.otf) format('opentype');
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
-}
-@font-face {
+}}
+@font-face {{
   font-family: 'Google Material Icons Filled';
   font-style: normal;
   font-weight: 400;
   src: url(//fonts.gstatic.com/s/googlematerialiconsfilled/v96/WWXFlimHYg6H=
 KI3TavMkbKdhBmDvgach8TVpeGsuueSZJH4.otf) format('opentype');
-}
+}}
 
-.google-material-icons-filled {
+.google-material-icons-filled {{
   font-family: 'Google Material Icons Filled';
   font-weight: normal;
   font-style: normal;
@@ -325,250 +325,250 @@ KI3TavMkbKdhBmDvgach8TVpeGsuueSZJH4.otf) format('opentype');
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
-}
-@font-face {
+}}
+@font-face {{
   font-family: 'Google Sans';
   font-style: normal;
   font-weight: 400;
   src: url(//fonts.gstatic.com/s/googlesans/v14/4UaGrENHsxJlGDuGo1OIlL3Owps=
 .ttf) format('truetype');
-}
-@font-face {
+}}
+@font-face {{
   font-family: 'Google Sans';
   font-style: normal;
   font-weight: 500;
   src: url(//fonts.gstatic.com/s/googlesans/v14/4UabrENHsxJlGDuGo1OIlLU94Yt=
 zCwM.ttf) format('truetype');
-}
-@font-face {
+}}
+@font-face {{
   font-family: 'Google Sans';
   font-style: normal;
   font-weight: 700;
   src: url(//fonts.gstatic.com/s/googlesans/v14/4UabrENHsxJlGDuGo1OIlLV154t=
 zCwM.ttf) format('truetype');
-}
+}}
 </style><!--<![endif]-->
       <style>
-        .body-container {
+        .body-container {{
           padding-left: 16px;
           padding-right: 16px;
-        }
+        }}
       </style>
  =20
       <style>
         u+.body .body-container,
         body[data-outlook-cycle] .body-container,
-        #MessageViewBody .body-container {
+        #MessageViewBody .body-container {{
           padding-left: 0;
           padding-right: 0;
-        }
+        }}
       </style>
  =20
     <style>
-      @media only screen and (min-width:580px) {
-        .column-per-37 {
+      @media only screen and (min-width:580px) {{
+        .column-per-37 {{
           width: 37% !important;
           max-width: 37%;
-        }
+        }}
 
-        .column-per-63 {
+        .column-per-63 {{
           width: 63% !important;
           max-width: 63%;
-        }
-      }
+        }}
+      }}
     </style>
  =20
     <style>
-      .appointment-buttons th {
+      .appointment-buttons th {{
         display: block;
         clear: both;
         float: left;
         margin-top: 12px;
-      }
+      }}
 
-      .appointment-buttons th a {
+      .appointment-buttons th a {{
         float: left;
-      }
+      }}
 
-      #MessageViewBody .appointment-buttons th {
+      #MessageViewBody .appointment-buttons th {{
        margin-top: 24px;
-      }
+      }}
     </style>
  =20
     <style>
-      @media only screen and (max-width:580px) {
-        table.full-width-mobile {
+      @media only screen and (max-width:580px) {{
+        table.full-width-mobile {{
           width: 100% !important;
-        }
+        }}
 
-        td.full-width-mobile {
+        td.full-width-mobile {{
           width: auto !important;
-        }
-      }
+        }}
+      }}
     </style>
     <style>
       .main-container-inner,
-      .info-bar-inner {
+      .info-bar-inner {{
         padding: 12px 16px !important;
-      }
+      }}
 
-      .main-column-table-ltr {
+      .main-column-table-ltr {{
         padding-right: 0 !important;
-      }
+      }}
 
-      .main-column-table-rtl {
+      .main-column-table-rtl {{
         padding-left: 0 !important;
-      }
+      }}
 
-      @media only screen and (min-width:580px) {
-        .main-container-inner {
+      @media only screen and (min-width:580px) {{
+        .main-container-inner {{
           padding: 24px 32px !important;
-        }
+        }}
 
-        .info-bar-inner {
+        .info-bar-inner {{
           padding: 12px 32px !important;
-        }
+        }}
 
-        .main-column-table-ltr {
+        .main-column-table-ltr {{
           padding-right: 32px !important;
-        }
+        }}
 
-        .main-column-table-rtl {
+        .main-column-table-rtl {{
           padding-left: 32px !important;
-        }
+        }}
 
-        .appointment-buttons th {
+        .appointment-buttons th {{
           display: table-cell;
           clear: none;
-        }
-      }
+        }}
+      }}
 
-      .primary-text {
+      .primary-text {{
         color: #3c4043 !important;
-      }
+      }}
 
       .secondary-text,
-      .phone-number a {
+      .phone-number a {{
         color: #70757a !important;
-      }
+      }}
 
-      .accent-text {
+      .accent-text {{
         color: #1a73e8 !important;
-      }
+      }}
 
-      .accent-text-dark {
+      .accent-text-dark {{
         color: #185abc !important;
-      }
+      }}
 
       .grey-button-text,
-      .attachment-chip a {
+      .attachment-chip a {{
         color: #5f6368 !important;
-      }
+      }}
 
-      .primary-button {
+      .primary-button {{
         background-color: #1a73e8 !important;
-      }
+      }}
 
-      .primary-button-text {
+      .primary-button-text {{
         color: #fff !important;
-      }
+      }}
 
-      .underline-on-hover:hover {
+      .underline-on-hover:hover {{
         text-decoration: underline !important;
-      }
+      }}
 
-      .grey-infobar-text {
+      .grey-infobar-text {{
         color: #202124 !important;
-      }
+      }}
 
-      @media (prefers-color-scheme: dark) {
-        .primary-text:not([class^=3D"x_"]) {
+      @media (prefers-color-scheme: dark) {{
+        .primary-text:not([class^=3D"x_"]) {{
           color: #e8eaed !important;
-        }
+        }}
 
         .secondary-text:not([class^=3D"x_"]),
-        .phone-number:not([class^=3D"x_"]) a {
+        .phone-number:not([class^=3D"x_"]) a {{
           color: #9aa0a6 !important;
-        }
+        }}
 
         .grey-button-text:not([class^=3D"x_"]),
-        .attachment-chip:not([class^=3D"x_"]) a {
+        .attachment-chip:not([class^=3D"x_"]) a {{
           color: #bdc1c6 !important;
-        }
+        }}
 
         .accent-text:not([class^=3D"x_"]),
-        .hairline-button-text:not([class^=3D"x_"]) {
+        .hairline-button-text:not([class^=3D"x_"]) {{
           color: #8ab4f8 !important;
-        }
+        }}
 
-        .primary-button:not([class^=3D"x_"]) {
+        .primary-button:not([class^=3D"x_"]) {{
           background-color: #8ab4f8 !important;
-        }
+        }}
 
-        .primary-button-text:not([class^=3D"x_"]) {
+        .primary-button-text:not([class^=3D"x_"]) {{
           color: #202124 !important;
-        }
-      }
+        }}
+      }}
     </style>
     <style>
-      @media (prefers-color-scheme: dark) {
-        .cse-banner:not([class^=3D"x_"]) {
+      @media (prefers-color-scheme: dark) {{
+        .cse-banner:not([class^=3D"x_"]) {{
           background-color: #3c4043 !important; /* Google Grey 800 */
-        }
+        }}
 
-        .encryption-icon:not([class^=3D"x_"]) {
+        .encryption-icon:not([class^=3D"x_"]) {{
           /* WARNING: This causes the whole style tag to get stripped in Gm=
 ail. */
           background-image: url('https://fonts.gstatic.com/s/i/googlemateri=
 aliconsfilled/encrypted/v3/gm_grey200-24dp/2x/gm_filled_encrypted_gm_grey20=
 0_24dp.png') !important;
-        }
-      }
+        }}
+      }}
     </style>
     <!--[if !mso]><!-->
     <style>
-      .prevent-link a {
+      .prevent-link a {{
         color: inherit !important;
         text-decoration: none !important;
         font-size: inherit !important;
         font-family: inherit !important;
         font-weight: inherit !important;
         line-height: inherit !important;
-      }
+      }}
     </style>
     <!--<![endif]-->
 
     <!--[if mso | IE]>
       <style>
-        .main-container-inner {
+        .main-container-inner {{
           padding: 24px 32px !important;
-        }
+        }}
 
-        .info-bar-inner {
+        .info-bar-inner {{
           padding: 12px 32px !important;
-        }
+        }}
 
-        .cse-banner .encryption-icon {
+        .cse-banner .encryption-icon {{
           /* We use the IE workaround instead. */
           background-image: none !important;
-        }
+        }}
 
-        .cse-banner .encryption-icon .ms-fallback {
+        .cse-banner .encryption-icon .ms-fallback {{
           display: block !important;
-        }
+        }}
 
         /* NB: Some MS clients ignore dark-scheme styling and apply their o=
 wn, so there's nothing we can do to help there. */
-        @media (prefers-color-scheme: dark) {
-          .cse-banner:not([class^=3D"x_"]) .encryption-icon .ms-fallback {
+        @media (prefers-color-scheme: dark) {{
+          .cse-banner:not([class^=3D"x_"]) .encryption-icon .ms-fallback {{
             display: none !important;
-          }
+          }}
 
           .cse-banner:not([class^=3D"x_"]) .encryption-icon .ms-fallback-da=
-rk {
+rk {{
             display: block !important;
-          }
-        }
+          }}
+        }}
       </style>
     <![endif]-->
   </head><body class=3D"body"><span itemscope itemtype=3D"http://schema.org=
