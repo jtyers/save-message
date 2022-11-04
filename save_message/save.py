@@ -18,6 +18,20 @@ from save_message.model import Config
 logger = logging.getLogger(__name__)
 
 
+def get_header_preamble(message: EmailMessage, html: bool = False) -> str:
+    if html:
+        lines = [
+            f"<p>{h}: {message[h.lower()]}</p>"
+            for h in ["Date", "From", "To", "Subject"]
+        ]
+    else:
+        lines = [
+            f"{h}: {message[h.lower()]}" for h in ["Date", "From", "To", "Subject"]
+        ]
+
+    return "\n".join(lines) + "\n"
+
+
 def sanitize_to_filename(s):
     """Really simple string sanitizer that strips all non-alphanumerics/spaces
     from the string before saving, so it is very filesystem safe."""
@@ -35,21 +49,33 @@ def guess_ext_for_part(part):
     return ext
 
 
-def get_filename_for_part(message_name: str, part: MIMEPart, counter: int):
-    filename = part.get_filename()
+def get_filename_for_part(
+    message_name: str, part: MIMEPart, counter: int, msg_name_as_filename: bool = False
+):
+    if msg_name_as_filename:
+        part_filename = part.get_filename()
 
-    if filename:
-        if "." in filename:
-            ext = filename[filename.index(".") :]
-            filename = sanitize_to_filename(filename[: filename.index(".")]) + ext
+        if part_filename and "." in part_filename:
+            ext = part_filename[part_filename.index(".") :]
+        else:
+            ext = guess_ext_for_part(part)
+        filename = f"{message_name}{ext}"
+
+    else:
+        filename = part.get_filename()
+
+        if filename:
+            if "." in filename:
+                ext = filename[filename.index(".") :]
+                filename = sanitize_to_filename(filename[: filename.index(".")]) + ext
+
+            else:
+                ext = guess_ext_for_part(part)
+                filename = sanitize_to_filename(filename) + ext
 
         else:
             ext = guess_ext_for_part(part)
-            filename = sanitize_to_filename(filename) + ext
-
-    else:
-        ext = guess_ext_for_part(part)
-        filename = f"{message_name}-{counter:02d}{ext}"
+            filename = f"{message_name}-{counter:02d}{ext}"
 
     return filename, ext
 
@@ -77,35 +103,40 @@ class MessagePartSaver:
         self,
         msg: EmailMessage,
         part: MIMEPart,
-        message_name: str,
-        dest_dir: str,
-        counter: int,
+        dest_path: str,
     ):
+        """Save a message MIME part to a file.
+
+        @param msg The EmailMessage the part came from
+        @param part The part whose payload we are saving
+        @param dest_path The filename to write the payload to
+        """
         # multipart/* are just containers
         if part.get_content_maintype() == "multipart":
             return
 
-        filename, ext = get_filename_for_part(message_name, part, counter)
-
-        counter += 1
-        dest_filename = os.path.join(dest_dir, filename)
-        with open(dest_filename, "wb") as fp2:
+        with open(dest_path, "wb") as fp2:
             # if this part is not an attachment, it is the body of the message, so
             # we prepend some headers to give context
             if not part.is_attachment() and part.get_content_maintype() == "text":
-                for h in ["Date", "From", "To", "Subject"]:
-                    fp2.write(f"{h}: {msg[h.lower()]}\n".encode())
+
+                preamble = get_header_preamble(
+                    msg, html=part.get_content_type() == "text/html"
+                )
+                fp2.write(preamble.encode())
                 fp2.write("\n".encode())
 
             fp2.write(part.get_payload(decode=True))
 
-            logger.debug("saved %s", filename)
+            logger.debug("saved %s", os.path.basename(dest_path))
 
-        # same as above, but if it was HTML and convert_html_to_pdf is on, convert
-        # the HTML to PDF and save that alongside, using prince
-        if ext == "html" and self.config.body.convert_html_to_pdf:
-            dest_pdffilename = dest_filename[: -len(ext)] + ".pdf"
-            subprocess.run(["prince", dest_filename, "-o", dest_pdffilename])
+
+#    # same as above, but if it was HTML and convert_html_to_pdf is on, convert
+
+#    # the HTML to PDF and save that alongside, using prince
+#    if ext == "html" and self.config.body.convert_html_to_pdf:
+#        dest_pdffilename = dest_filename[: -len(ext)] + ".pdf"
+#        subprocess.run(["prince", dest_filename, "-o", dest_pdffilename])
 
 
 class MessageSaver:
@@ -128,18 +159,6 @@ class MessageSaver:
         as a command to run to determine the save location instead (generally it's
         expected that this command would prompt the user for a choice, e.g. via `fzf`).
         """
-
-        # create a temporary file and save incoming data to it; the file is
-        # opened with w+b, meaning write and read is possible, so we can then
-        # re-feed the file to the email parser, and then write it all to a new
-        # file in the output directory once we know what that directory is called
-        #####   with tempfile.TemporaryFile(mode="w+") as fp:
-        #####       for line in input_file:
-        #####           fp.write(line)
-
-        #####       fp.seek(0)
-        #####       msg = email.message_from_file(fp, policy=email.policy.default)
-        # verbose_msg(msg)
 
         message_name = get_message_name(msg)
 
@@ -165,18 +184,59 @@ class MessageSaver:
         os.makedirs(dest_dir, exist_ok=True)
 
         counter = 1
-        for part in msg.walk():
-            self.message_part_saver.save_part(
+
+        # First collate the 'body parts', i.e. non-attachments, which
+        # make up the body of the messge. We aim to save only one of
+        # these
+        body_parts = {
+            x.get_content_type(): x
+            for x in filter(lambda x: not x.is_attachment(), msg.walk())
+        }
+
+        saved = False
+        for preferred_content_type in ["text/html", "text/plain"]:
+            if preferred_content_type in body_parts.keys():
+                self.__save_part__(
+                    msg=msg,
+                    part=body_parts[preferred_content_type],
+                    dest_dir=dest_dir,
+                    msg_name_as_filename=True,
+                )
+                saved = True
+                break
+
+        if not saved:
+            raise ValueError(
+                f"could not find message body in a preferred format, the available body part content types are {body_parts.keys()}"
+            )
+
+        for part in filter(lambda x: x.is_attachment(), msg.walk()):
+            self.__save_part__(
                 msg=msg,
                 part=part,
-                message_name=message_name,
-                counter=counter,
                 dest_dir=dest_dir,
+                counter=counter,
+                msg_name_as_filename=False,
             )
             counter += 1
 
-        # finally, write the entire message to a file in the new directory
-        message_file_name = f"{message_name}.eml"
-        with open(os.path.join(dest_dir, message_file_name), "wb") as f:
-            f.write(msg.as_bytes())
-            logger.debug("saved %s", message_file_name)
+    #   # finally, write the entire message to a file in the new directory
+    #   message_file_name = f"{message_name}.eml"
+    #   with open(os.path.join(dest_dir, message_file_name), "wb") as f:
+    #       f.write(msg.as_bytes())
+    #       logger.debug("saved %s", message_file_name)
+
+    def __save_part__(
+        self, msg, part, dest_dir, msg_name_as_filename: bool, counter=None
+    ):
+        msg_name = get_message_name(msg)
+        filename, ext = get_filename_for_part(
+            msg_name, part, counter, msg_name_as_filename=msg_name_as_filename
+        )
+        dest_path = os.path.join(dest_dir, filename)
+
+        self.message_part_saver.save_part(
+            msg=msg,
+            part=part,
+            dest_path=dest_path,
+        )

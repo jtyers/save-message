@@ -17,7 +17,7 @@ def assert_file_has_content(filename, content, binary=False):
     )
 
     if not p.stdout == "":
-        raise AssertionError(f"file {filename} differs:\n{p.stdout}")
+        raise AssertionError(f"file {os.path.basename(filename)} differs:\n{p.stdout}")
 
 
 def create_message_string(

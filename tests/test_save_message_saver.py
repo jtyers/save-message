@@ -13,6 +13,7 @@ from tests.util import create_message
 
 from save_message.model import Config
 from save_message.rules import RulesMatcher
+from save_message.save import get_header_preamble
 from save_message.save import get_message_name
 from save_message.save import MessagePartSaver
 from save_message.save import MessageSaver
@@ -64,18 +65,19 @@ def do_test_message_saver(
     message_save_dir = os.path.join(temp_save_dir, message_name)
     message_eml_file = os.path.join(message_save_dir, f"{message_name}.eml")
 
-    with open(message_eml_file, "r") as wf:
-        written_message = email.message_from_file(wf, policy=email.policy.default)
-        for k, v in written_message.items():
-            # these headers get reformatted/changed for some reason
-            if k in ["Received", "Authentication-Results", "DKIM-Signature"]:
-                continue
+    if check_eml_file:
+        with open(message_eml_file, "r") as wf:
+            written_message = email.message_from_file(wf, policy=email.policy.default)
+            for k, v in written_message.items():
+                # these headers get reformatted/changed for some reason
+                if k in ["Received", "Authentication-Results", "DKIM-Signature"]:
+                    continue
 
-            assert message[k].strip() == v.strip()
+                assert message[k].strip() == v.strip()
 
-        assert [p.get_payload(decode=True) for p in message.walk()] == [
-            p.get_payload(decode=True) for p in written_message.walk()
-        ]
+            assert [p.get_payload(decode=True) for p in message.walk()] == [
+                p.get_payload(decode=True) for p in written_message.walk()
+            ]
 
     # now check the full list of files is what we expect (we do this before
     # checking payloads as its helpful to get this error earlier)
@@ -107,10 +109,6 @@ def do_test_message_saver(
         )
 
 
-def get_header_preamble(message):
-    return [f"{h}: {message[h.lower()]}" for h in ["Date", "From", "To", "Subject"]]
-
-
 def test_simple_text_body_no_atts(temp_save_dir):
     message = create_message(template="simple_text_only")
     message_parts = list(message.walk())
@@ -119,11 +117,13 @@ def test_simple_text_body_no_atts(temp_save_dir):
     do_test_message_saver(
         temp_save_dir=temp_save_dir,
         message=message,
-        check_eml_file=True,
+        check_eml_file=False,
         check_part_files={
-            f"{message_name}-02.txt": "\n".join(
-                get_header_preamble(message)
-                + ["", message_parts[1].get_payload(decode=True).decode("utf-8")]
+            f"{message_name}.txt": "\n".join(
+                [
+                    get_header_preamble(message),
+                    message_parts[1].get_payload(decode=True).decode("utf-8"),
+                ]
             ),
         },
     )
@@ -137,19 +137,13 @@ def test_html_body_ics_att(temp_save_dir):
     do_test_message_saver(
         temp_save_dir=temp_save_dir,
         message=message,
-        check_eml_file=True,
+        check_eml_file=False,
         check_part_files={
-            f"{message_name}-04.html": "\n".join(
-                get_header_preamble(message)
-                + ["", message_parts[3].get_payload(decode=True).decode("utf-8")]
-            ),
-            f"{message_name}-03.txt": "\n".join(
-                get_header_preamble(message)
-                + ["", message_parts[2].get_payload(decode=True).decode("utf-8")]
-            ),
-            f"{message_name}-05.bin": "\n".join(
-                get_header_preamble(message)
-                + ["", message_parts[4].get_payload(decode=True).decode("utf-8")]
+            f"{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
             ),
             "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
         },
