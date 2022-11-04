@@ -122,9 +122,7 @@ class MessageSaver:
         self.message_part_saver = message_part_saver
         self.rules_matcher = rules_matcher
 
-    def save_message(
-        self, input_file: TextIOWrapper, prompt_save_dir_command: str = None
-    ):
+    def save_message(self, msg: EmailMessage, prompt_save_dir_command: str = None):
         """Save the message in `input_file`, using rules to determine
         where to save. If prompt_save_dir_command is specified, that is treated
         as a command to run to determine the save location instead (generally it's
@@ -135,52 +133,50 @@ class MessageSaver:
         # opened with w+b, meaning write and read is possible, so we can then
         # re-feed the file to the email parser, and then write it all to a new
         # file in the output directory once we know what that directory is called
-        with tempfile.TemporaryFile(mode="w+") as fp:
-            for line in input_file:
-                fp.write(line)
+        #####   with tempfile.TemporaryFile(mode="w+") as fp:
+        #####       for line in input_file:
+        #####           fp.write(line)
 
-            fp.seek(0)
-            msg = email.message_from_file(fp, policy=email.policy.default)
-            # verbose_msg(msg)
+        #####       fp.seek(0)
+        #####       msg = email.message_from_file(fp, policy=email.policy.default)
+        # verbose_msg(msg)
 
-            message_name = get_message_name(msg)
+        message_name = get_message_name(msg)
 
-            matching_rules = self.rules_matcher.match_save_rule_or_prompt(
-                msg, prompt_save_dir_command
+        matching_rules = self.rules_matcher.match_save_rule_or_prompt(
+            msg, prompt_save_dir_command
+        )
+        logger.debug("matching_rules: %s", matching_rules)
+        rule = None
+
+        if len(matching_rules) > 0:
+            # find the first match with save_to specified
+            rule = list(filter(lambda x: x.save_to, matching_rules))[0]
+
+            dest_dir = os.path.join(rule.save_to, message_name)
+        else:
+            dest_dir = os.path.join(
+                self.config.default_save_to or DEFAULT_SAVE_TO, message_name
             )
-            logger.debug("matching_rules: %s", matching_rules)
-            rule = None
 
-            if len(matching_rules) > 0:
-                # find the first match with save_to specified
-                rule = list(filter(lambda x: x.save_to, matching_rules))[0]
+        dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
 
-                dest_dir = os.path.join(rule.save_to, message_name)
-            else:
-                dest_dir = os.path.join(
-                    self.config.default_save_to or DEFAULT_SAVE_TO, message_name
-                )
+        logger.info("saving to %s", dest_dir)
+        os.makedirs(dest_dir, exist_ok=True)
 
-            dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
+        counter = 1
+        for part in msg.walk():
+            self.message_part_saver.save_part(
+                msg=msg,
+                part=part,
+                message_name=message_name,
+                counter=counter,
+                dest_dir=dest_dir,
+            )
+            counter += 1
 
-            logger.info("saving to %s", dest_dir)
-            os.makedirs(dest_dir, exist_ok=True)
-
-            counter = 1
-            for part in msg.walk():
-                self.message_part_saver.save_part(
-                    msg=msg,
-                    part=part,
-                    message_name=message_name,
-                    counter=counter,
-                    dest_dir=dest_dir,
-                )
-                counter += 1
-
-            # finally, re-read the raw input and write it to a file in the new directory
-            fp.seek(0)
-            message_file_name = f"{message_name}.eml"
-            with open(os.path.join(dest_dir, message_file_name), "w") as f:
-                for line in fp:
-                    f.write(line)
-                logger.debug("saved %s", message_file_name)
+        # finally, write the entire message to a file in the new directory
+        message_file_name = f"{message_name}.eml"
+        with open(os.path.join(dest_dir, message_file_name), "w") as f:
+            f.write(msg.as_string())
+            logger.debug("saved %s", message_file_name)

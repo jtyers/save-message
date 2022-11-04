@@ -18,6 +18,14 @@ from save_message.save import get_message_name
 from save_message.save import MessagePartSaver
 from save_message.save import MessageSaver
 
+#  import contextlib
+#
+#  @contextlib.contextmanager
+#  def file_hanlder(file_name,file_mode):
+#      file = open(file_name,file_mode)
+#      yield file
+#      file.close()
+
 
 @pytest.fixture
 def temp_save_dir():
@@ -27,9 +35,7 @@ def temp_save_dir():
     shutil.rmtree(result)
 
 
-def do_test_message_saver(
-    temp_save_dir, expected_part_indexes: list, **create_message_args
-):
+def test_do_test_message_saver(temp_save_dir):
     # given
     # use real MessagePartSaver - we consciously test both here,
     # as comparing Message/EmailMessage instances in mocks is hard
@@ -41,12 +47,11 @@ def do_test_message_saver(
     rules_matcher = MagicMock(spec=RulesMatcher)
 
     message_string = create_message_string(template="simple_text_only")
-    message = email.message_from_string(message_string)
-    message_as_file = as_file(message_string)
+    message = email.message_from_string(message_string, policy=email.policy.default)
 
     # when
     message_saver = MessageSaver(config, message_part_saver, rules_matcher)
-    message_saver.save_message(message_as_file)
+    message_saver.save_message(message)
 
     # then
 
@@ -57,10 +62,18 @@ def do_test_message_saver(
     message_name = get_message_name(message)
     message_save_dir = os.path.join(temp_save_dir, message_name)
 
-    assert_file_has_content(
-        os.path.join(message_save_dir, message_name + ".eml"),
-        message_string,
-    )
+    with open(os.path.join(message_save_dir, message_name + ".eml"), "r") as wf:
+        written_message = email.message_from_file(wf, policy=email.policy.default)
+        for k, v in written_message.items():
+            # these headers get reformatted/changed for some reason
+            if k in ["Received"]:
+                continue
+
+            assert message[k].strip() == v.strip()
+
+        assert [p.get_payload(decode=True) for p in message.walk()] == [
+            p.get_payload(decode=True) for p in written_message.walk()
+        ]
 
     assert_file_has_content(
         os.path.join(message_save_dir, message_name + "-02.txt"),

@@ -33,4 +33,6 @@ def create_message_string(
 
 def create_message(**kwargs):
     # see message_from_string() for supported args
-    return email.message_from_string(create_message_string(**kwargs))
+    return email.message_from_string(
+        create_message_string(**kwargs), policy=email.policy.default
+    )
