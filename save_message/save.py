@@ -159,19 +159,14 @@ class MessageSaver:
         as a command to run to determine the save location instead (generally it's
         expected that this command would prompt the user for a choice, e.g. via `fzf`).
         """
-
         message_name = get_message_name(msg)
 
-        matching_rules = self.rules_matcher.match_save_rule_or_prompt(
+        rule = self.rules_matcher.match_save_rule_or_prompt(
             msg, prompt_save_dir_command
         )
-        logger.debug("matching_rules: %s", matching_rules)
-        rule = None
+        logger.debug("matching_rule: %s", rule)
 
-        if len(matching_rules) > 0:
-            # find the first match with save_to specified
-            rule = list(filter(lambda x: x.save_to, matching_rules))[0]
-
+        if rule:
             dest_dir = os.path.join(rule.save_to, message_name)
         else:
             dest_dir = os.path.join(

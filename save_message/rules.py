@@ -24,8 +24,10 @@ class RulesMatcher:
     def match_save_rule_or_prompt(
         self, msg: EmailMessage, prompt_save_dir_command: str = None
     ):
-        """Find all save rules in the config that match the given message,
-        or run prompt_save_dir_command instead if specified."""
+        """Find the first save_rule in the config that matches the given
+        message. If prompt_save_dir_command is given, we instead generate
+        a new (otherwise blank) SaveRule with the save_dir set to the
+        output from that command, and return it."""
 
         if prompt_save_dir_command:
             logger.debug("running %s", shlex.split(prompt_save_dir_command))
@@ -50,15 +52,14 @@ class RulesMatcher:
             if not output_dir.strip():
                 raise ValueError("no output returned from prompt_save_dir_command")
 
-            return [SaveRule(save_to=output_dir)]
+            return SaveRule(save_to=output_dir)
 
         else:
-            result = []
             for s in self.config.save_rules:
                 if s.matches(msg):
-                    result.append(s)
+                    return s
 
-            return result
+            return None
 
 
 class RulesAdder:

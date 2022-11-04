@@ -54,6 +54,7 @@ def do_test_message_saver(
     config.default_save_to = temp_save_dir
 
     rules_matcher = MagicMock(spec=RulesMatcher)
+    rules_matcher.match_save_rule_or_prompt.return_value = None
 
     # when
     message_saver = MessageSaver(config, message_part_saver, rules_matcher)

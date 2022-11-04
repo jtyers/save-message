@@ -8,7 +8,7 @@ from typing import List
 from pydantic import BaseModel
 
 
-def match_field(match_rule, value):
+def match_field(match_rule: str, value: str) -> bool:
     """Find an individual value against a filter. Handles glob or regex filters."""
     if match_rule[0] == "/" and match_rule[-1] == "/":
         return re.match(match_rule[1:-1], value) is not None

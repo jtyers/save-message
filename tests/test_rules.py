@@ -36,11 +36,11 @@ def test_match_without_prompt():
     rules_matcher = RulesMatcher(config)
     result = rules_matcher.match_save_rule_or_prompt(msg)
 
-    assert result == [config.save_rules[0]]
+    assert result == config.save_rules[0]
 
 
 @patch("subprocess.run")
-def test_match_with_prompt(subprocess_run):
+def test_match_with_prompt(subprocess_run: MagicMock):
     config = Config()
     config.save_rules = [
         new_matching_rule(),
@@ -61,11 +61,13 @@ def test_match_with_prompt(subprocess_run):
         msg, prompt_save_dir_command="echo"
     )
 
-    assert result == [SaveRule(save_to=prompt_response)]
+    assert result == SaveRule(save_to=prompt_response)
 
 
 @patch("subprocess.run")
-def test_match_with_prompt_multiline_only_uses_first_line_of_output(subprocess_run):
+def test_match_with_prompt_multiline_only_uses_first_line_of_output(
+    subprocess_run: MagicMock,
+):
     config = Config()
     config.save_rules = [
         new_matching_rule(),
@@ -87,11 +89,11 @@ bar"""
         msg, prompt_save_dir_command="echo"
     )
 
-    assert result == [SaveRule(save_to="foo")]
+    assert result == SaveRule(save_to="foo")
 
 
 @patch("subprocess.run")
-def test_match_with_prompt_no_output_raises(subprocess_run):
+def test_match_with_prompt_no_output_raises(subprocess_run: MagicMock):
     config = Config()
     config.save_rules = [
         new_matching_rule(),
