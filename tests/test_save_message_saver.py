@@ -3,28 +3,24 @@ from email.message import EmailMessage
 import os
 import pytest
 import shutil
+import subprocess
 import tempfile
 
 from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from .context import save_message  # noqa: F401
 from tests.util import assert_file_has_content
 from tests.util import create_message
 
 from save_message.model import Config
+from save_message.model import RuleSettings
+from save_message.model import SaveRule
 from save_message.rules import RulesMatcher
 from save_message.save import get_header_preamble
 from save_message.save import get_message_name
 from save_message.save import MessagePartSaver
 from save_message.save import MessageSaver
-
-#  import contextlib
-#
-#  @contextlib.contextmanager
-#  def file_hanlder(file_name,file_mode):
-#      file = open(file_name,file_mode)
-#      yield file
-#      file.close()
 
 
 @pytest.fixture
@@ -41,20 +37,28 @@ def do_test_message_saver(
     check_eml_file: bool,
     check_part_files: dict = {},
     check_part_binary_files: dict = {},
+    rule_settings: RuleSettings = None,
 ):
     """Run the test to save the given message, then verify the .eml file is present and correct, then verify particular payload files have been created.
 
-    check_part_files should be a dict of filename -> payload (as str)."""
+    check_part_files should be a dict of filename -> payload (as str).
+
+    If rule is specified, this will be the rule returned by RulesMatcher for
+    the message.
+    """
     # given
     # use real MessagePartSaver - we consciously test both here,
     # as comparing Message/EmailMessage instances in mocks is hard
     message_part_saver = MessagePartSaver(config=Config)
 
     config = MagicMock(spec=Config)
-    config.default_save_to = temp_save_dir
+    default_settings = RuleSettings(save_to=temp_save_dir)
+    config.default_settings = default_settings
 
     rules_matcher = MagicMock(spec=RulesMatcher)
-    rules_matcher.match_save_rule_or_prompt.return_value = None
+    rules_matcher.match_save_rule_or_prompt.return_value = SaveRule(
+        settings=rule_settings or default_settings
+    )
 
     # when
     message_saver = MessageSaver(config, message_part_saver, rules_matcher)
@@ -97,12 +101,18 @@ def do_test_message_saver(
     # finally, check file contents for each file specified, first in
     # text mode then in binary mode
     for filename, payload in check_part_files.items():
+        if not payload:
+            continue
+
         assert_file_has_content(
             os.path.join(message_save_dir, filename),
             payload,
         )
 
     for filename, payload in check_part_binary_files.items():
+        if not payload:
+            continue
+
         assert_file_has_content(
             os.path.join(message_save_dir, filename),
             payload,
@@ -130,6 +140,32 @@ def test_simple_text_body_no_atts(temp_save_dir):
     )
 
 
+def test_simple_text_body_no_atts_with_save_eml_rule(temp_save_dir):
+    message = create_message(template="simple_text_only")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        save_to=temp_save_dir,
+        save_eml=True,
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=True,
+        check_part_files={
+            f"{message_name}.txt": "\n".join(
+                [
+                    get_header_preamble(message),
+                    message_parts[1].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+        },
+        rule_settings=rule_settings,
+    )
+
+
 def test_html_body_ics_att(temp_save_dir):
     message = create_message(template="text_html_with_calendar_attachment")
     message_parts = list(message.walk())
@@ -148,4 +184,27 @@ def test_html_body_ics_att(temp_save_dir):
             ),
             "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
         },
+    )
+
+
+def test_html_body_ics_att_with_html_pdf_transform(temp_save_dir):
+    html_pdf_transform_command = "prince $in -o $out"
+    message = create_message(template="text_html_with_calendar_attachment")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        save_to=temp_save_dir,
+        html_pdf_transform_command=html_pdf_transform_command,
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            f"{message_name}.pdf": None,  ## None means don't check content
+            "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
+        },
+        rule_settings=rule_settings,
     )

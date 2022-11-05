@@ -5,6 +5,7 @@ from .context import save_message  # noqa: F401
 from tests.util import create_message
 
 from save_message.model import Config
+from save_message.model import RuleSettings
 from save_message.model import SaveRule
 from save_message.rules import RulesMatcher
 
@@ -39,6 +40,22 @@ def test_match_without_prompt():
     assert result == config.save_rules[0]
 
 
+def test_no_match_without_prompt_returns_default_settings():
+    config = Config()
+    config.default_settings = RuleSettings(save_to="/foo/bar")
+    config.save_rules = [
+        new_non_matching_rule(),
+        new_non_matching_rule(),
+    ]
+
+    msg = create_message(template="simple_text_only")
+
+    rules_matcher = RulesMatcher(config)
+    result = rules_matcher.match_save_rule_or_prompt(msg)
+
+    assert result == SaveRule(settings=config.default_settings)
+
+
 @patch("subprocess.run")
 def test_match_with_prompt(subprocess_run: MagicMock):
     config = Config()
@@ -61,7 +78,7 @@ def test_match_with_prompt(subprocess_run: MagicMock):
         msg, prompt_save_dir_command="echo"
     )
 
-    assert result == SaveRule(save_to=prompt_response)
+    assert result == SaveRule(settings=RuleSettings(save_to=prompt_response))
 
 
 @patch("subprocess.run")
@@ -89,7 +106,7 @@ bar"""
         msg, prompt_save_dir_command="echo"
     )
 
-    assert result == SaveRule(save_to="foo")
+    assert result == SaveRule(settings=RuleSettings(save_to="foo"))
 
 
 @patch("subprocess.run")

@@ -1,19 +1,21 @@
+import contextlib
 from datetime import datetime
 from email.message import EmailMessage
 from email.message import MIMEPart
 import email
 import email.policy
-from io import TextIOWrapper
 import mimetypes
 import logging
 import os
 import re
+import shlex
+import shutil
 import subprocess
 import tempfile
 
-from save_message.config import DEFAULT_SAVE_TO
 from save_message.rules import RulesMatcher
 from save_message.model import Config
+from save_message.model import SaveRule
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +94,14 @@ def get_message_name(msg):
     return f"{name_from} {subject} {name_date}"
 
 
+@contextlib.contextmanager
+def temp_save_dir() -> str:
+    result = tempfile.mkdtemp()
+    yield result
+
+    shutil.rmtree(result)
+
+
 class MessagePartSaver:
     """Saves messages, optionally with some transformations, to a configured
     destination."""
@@ -119,7 +129,6 @@ class MessagePartSaver:
             # if this part is not an attachment, it is the body of the message, so
             # we prepend some headers to give context
             if not part.is_attachment() and part.get_content_maintype() == "text":
-
                 preamble = get_header_preamble(
                     msg, html=part.get_content_type() == "text/html"
                 )
@@ -130,13 +139,29 @@ class MessagePartSaver:
 
             logger.debug("saved %s", os.path.basename(dest_path))
 
+    def save_html_part_to_pdf(
+        self,
+        msg: EmailMessage,
+        part: MIMEPart,
+        dest_path: str,
+        html_pdf_transform_command: str,
+    ):
+        assert part.get_content_type() == "text/html"
 
-#    # same as above, but if it was HTML and convert_html_to_pdf is on, convert
+        with temp_save_dir() as td:
+            input_filename = os.path.join(td, "inputmsg")
 
-#    # the HTML to PDF and save that alongside, using prince
-#    if ext == "html" and self.config.body.convert_html_to_pdf:
-#        dest_pdffilename = dest_filename[: -len(ext)] + ".pdf"
-#        subprocess.run(["prince", dest_filename, "-o", dest_pdffilename])
+            with open(input_filename, "wb") as f:
+                f.write(part.get_payload(decode=True))
+
+            subprocess.run(
+                shlex.split(
+                    html_pdf_transform_command.replace(
+                        "$in", f'"{input_filename}"'
+                    ).replace("$out", f'"{dest_path}"')
+                ),
+                check=True,
+            )
 
 
 class MessageSaver:
@@ -166,13 +191,7 @@ class MessageSaver:
         )
         logger.debug("matching_rule: %s", rule)
 
-        if rule:
-            dest_dir = os.path.join(rule.save_to, message_name)
-        else:
-            dest_dir = os.path.join(
-                self.config.default_save_to or DEFAULT_SAVE_TO, message_name
-            )
-
+        dest_dir = os.path.join(rule.settings.save_to, message_name)
         dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
 
         logger.info("saving to %s", dest_dir)
@@ -196,6 +215,7 @@ class MessageSaver:
                     part=body_parts[preferred_content_type],
                     dest_dir=dest_dir,
                     msg_name_as_filename=True,
+                    rule=rule,
                 )
                 saved = True
                 break
@@ -212,17 +232,25 @@ class MessageSaver:
                 dest_dir=dest_dir,
                 counter=counter,
                 msg_name_as_filename=False,
+                rule=rule,
             )
             counter += 1
 
-    #   # finally, write the entire message to a file in the new directory
-    #   message_file_name = f"{message_name}.eml"
-    #   with open(os.path.join(dest_dir, message_file_name), "wb") as f:
-    #       f.write(msg.as_bytes())
-    #       logger.debug("saved %s", message_file_name)
+        if rule.settings.save_eml:
+            # finally, write the entire message to a file in the new directory
+            message_file_name = f"{message_name}.eml"
+            with open(os.path.join(dest_dir, message_file_name), "wb") as f:
+                f.write(msg.as_bytes())
+                logger.debug("saved %s", message_file_name)
 
     def __save_part__(
-        self, msg, part, dest_dir, msg_name_as_filename: bool, counter=None
+        self,
+        msg,
+        part,
+        dest_dir,
+        msg_name_as_filename: bool,
+        rule: SaveRule,
+        counter=None,
     ):
         msg_name = get_message_name(msg)
         filename, ext = get_filename_for_part(
@@ -230,8 +258,22 @@ class MessageSaver:
         )
         dest_path = os.path.join(dest_dir, filename)
 
-        self.message_part_saver.save_part(
-            msg=msg,
-            part=part,
-            dest_path=dest_path,
-        )
+        if (
+            part.get_content_type() == "text/html"
+            and rule.settings.html_pdf_transform_command
+        ):
+            dest_path = dest_path[: dest_path.rindex(".")] + ".pdf"
+
+            # ["prince", input_filename, "-o", dest_path]
+            self.message_part_saver.save_html_part_to_pdf(
+                msg=msg,
+                part=part,
+                dest_path=dest_path,
+                html_pdf_transform_command=rule.settings.html_pdf_transform_command,
+            )
+        else:
+            self.message_part_saver.save_part(
+                msg=msg,
+                part=part,
+                dest_path=dest_path,
+            )

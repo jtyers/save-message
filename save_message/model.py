@@ -17,6 +17,22 @@ def match_field(match_rule: str, value: str) -> bool:
         return fnmatch.fnmatch(value, match_rule)
 
 
+class RuleSettings(BaseModel):
+    # settings, either for a specific rule, or at global (default) level
+
+    # The location to save the message to, which should be a folder. Environment
+    # variables can be used here. The location must already exist.
+    save_to: str
+
+    # If True, save full messages (as .eml files) in addition to
+    # body/attachment saving.
+    save_eml: bool = False
+
+    # If set, this should be a command which reads an HTML file from the
+    # path $in and writes a PDF to the path $out.
+    html_pdf_transform_command: str = None
+
+
 class SaveRule(BaseModel):
     # match on the subject, from and to fields
     # Match values are treated as globs and passed to fnmatch, unless the
@@ -26,9 +42,7 @@ class SaveRule(BaseModel):
     match_from: str = None
     match_to: str = None
 
-    # The location to save the message to, which should be a folder. Environment
-    # variables can be used here. The location must already exist.
-    save_to: str
+    settings: RuleSettings
 
     def matches(self, msg: EmailMessage):
         result = True
@@ -68,7 +82,8 @@ class ConfigBody(BaseModel):
 
 
 class Config(BaseModel):
-    default_save_to: str = None
+    default_settings: RuleSettings = None
+
     body: ConfigBody = None
 
     save_rules: List[SaveRule] = []
