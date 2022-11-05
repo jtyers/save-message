@@ -13,7 +13,4 @@ def load_config(config_file):
 
     with open(c, "r") as f:
         cfg = yaml.safe_load(f)
-
-        if not cfg:
-            return Config()
         return Config(**cfg)

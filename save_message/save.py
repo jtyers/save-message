@@ -191,7 +191,7 @@ class MessageSaver:
         )
         logger.debug("matching_rule: %s", rule)
 
-        dest_dir = os.path.join(rule.settings.save_to, message_name)
+        dest_dir = os.path.join(rule.settings.save_settings.path, message_name)
         dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
 
         logger.info("saving to %s", dest_dir)
@@ -236,7 +236,7 @@ class MessageSaver:
             )
             counter += 1
 
-        if rule.settings.save_eml:
+        if rule.settings.save_settings.save_eml:
             # finally, write the entire message to a file in the new directory
             message_file_name = f"{message_name}.eml"
             with open(os.path.join(dest_dir, message_file_name), "wb") as f:
@@ -260,7 +260,7 @@ class MessageSaver:
 
         if (
             part.get_content_type() == "text/html"
-            and rule.settings.html_pdf_transform_command
+            and rule.settings.save_settings.html_pdf_transform_command
         ):
             dest_path = dest_path[: dest_path.rindex(".")] + ".pdf"
 
@@ -269,7 +269,7 @@ class MessageSaver:
                 msg=msg,
                 part=part,
                 dest_path=dest_path,
-                html_pdf_transform_command=rule.settings.html_pdf_transform_command,
+                html_pdf_transform_command=rule.settings.save_settings.html_pdf_transform_command,
             )
         else:
             self.message_part_saver.save_part(

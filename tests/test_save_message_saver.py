@@ -3,7 +3,6 @@ from email.message import EmailMessage
 import os
 import pytest
 import shutil
-import subprocess
 import tempfile
 
 from unittest.mock import MagicMock
@@ -14,6 +13,8 @@ from tests.util import assert_file_has_content
 from tests.util import create_message
 
 from save_message.model import Config
+from save_message.model import MessageAction
+from save_message.model import RuleSaveSettings
 from save_message.model import RuleSettings
 from save_message.model import SaveRule
 from save_message.rules import RulesMatcher
@@ -52,7 +53,10 @@ def do_test_message_saver(
     message_part_saver = MessagePartSaver(config=Config)
 
     config = MagicMock(spec=Config)
-    default_settings = RuleSettings(save_to=temp_save_dir)
+    default_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(path=temp_save_dir),
+    )
     config.default_settings = default_settings
 
     rules_matcher = MagicMock(spec=RulesMatcher)
@@ -146,8 +150,11 @@ def test_simple_text_body_no_atts_with_save_eml_rule(temp_save_dir):
     message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
-        save_to=temp_save_dir,
-        save_eml=True,
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=True,
+        ),
     )
 
     do_test_message_saver(
@@ -194,8 +201,12 @@ def test_html_body_ics_att_with_html_pdf_transform(temp_save_dir):
     message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
-        save_to=temp_save_dir,
-        html_pdf_transform_command=html_pdf_transform_command,
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            html_pdf_transform_command=html_pdf_transform_command,
+        ),
     )
 
     do_test_message_saver(

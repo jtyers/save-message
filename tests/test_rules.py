@@ -5,6 +5,8 @@ from .context import save_message  # noqa: F401
 from tests.util import create_message
 
 from save_message.model import Config
+from save_message.model import MessageAction
+from save_message.model import RuleSaveSettings
 from save_message.model import RuleSettings
 from save_message.model import SaveRule
 from save_message.rules import RulesMatcher
@@ -25,7 +27,7 @@ def new_non_matching_rule():
 
 
 def test_match_without_prompt():
-    config = Config()
+    config = MagicMock(spec=Config)
     config.save_rules = [
         new_matching_rule(),
         new_non_matching_rule(),
@@ -41,12 +43,15 @@ def test_match_without_prompt():
 
 
 def test_no_match_without_prompt_returns_default_settings():
-    config = Config()
-    config.default_settings = RuleSettings(save_to="/foo/bar")
+    config = MagicMock(spec=Config)
     config.save_rules = [
         new_non_matching_rule(),
         new_non_matching_rule(),
     ]
+    config.default_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(path="/foo/bar"),
+    )
 
     msg = create_message(template="simple_text_only")
 
@@ -58,7 +63,7 @@ def test_no_match_without_prompt_returns_default_settings():
 
 @patch("subprocess.run")
 def test_match_with_prompt(subprocess_run: MagicMock):
-    config = Config()
+    config = MagicMock(spec=Config)
     config.save_rules = [
         new_matching_rule(),
         new_non_matching_rule(),
@@ -78,14 +83,19 @@ def test_match_with_prompt(subprocess_run: MagicMock):
         msg, prompt_save_dir_command="echo"
     )
 
-    assert result == SaveRule(settings=RuleSettings(save_to=prompt_response))
+    assert result == SaveRule(
+        settings=RuleSettings(
+            action=MessageAction.SAVE_AND_DELETE,
+            save_settings=RuleSaveSettings(path=prompt_response),
+        )
+    )
 
 
 @patch("subprocess.run")
 def test_match_with_prompt_multiline_only_uses_first_line_of_output(
     subprocess_run: MagicMock,
 ):
-    config = Config()
+    config = MagicMock(spec=Config)
     config.save_rules = [
         new_matching_rule(),
         new_non_matching_rule(),
@@ -106,12 +116,17 @@ bar"""
         msg, prompt_save_dir_command="echo"
     )
 
-    assert result == SaveRule(settings=RuleSettings(save_to="foo"))
+    assert result == SaveRule(
+        settings=RuleSettings(
+            action=MessageAction.SAVE_AND_DELETE,
+            save_settings=RuleSaveSettings(path="foo"),
+        )
+    )
 
 
 @patch("subprocess.run")
 def test_match_with_prompt_no_output_raises(subprocess_run: MagicMock):
-    config = Config()
+    config = MagicMock(spec=Config)
     config.save_rules = [
         new_matching_rule(),
         new_non_matching_rule(),

@@ -5,6 +5,7 @@ import tempfile
 
 from save_message.config import load_config
 from save_message.model import Config
+from save_message.model import ConfigMaildir
 from save_message.model import SaveRule
 
 
@@ -19,10 +20,15 @@ def temp_save_dir() -> str:
 def test_config(temp_save_dir):
     input = """
     default_save_to: /foo/bar
+
+    maildir:
+        path: /mail
     """
     filename = os.path.join(temp_save_dir, "config.yaml")
     with open(filename, "w") as c:
         c.write(input)
 
     config = load_config(filename)
-    assert config == Config(default_save_to="/foo/bar")
+    assert config == Config(
+        maildir=ConfigMaildir(path="/mail"), default_save_to="/foo/bar"
+    )

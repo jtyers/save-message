@@ -1,10 +1,14 @@
 from .context import save_message  # noqa: F401
 from tests.util import create_message
 
+from save_message.model import MessageAction
 from save_message.model import RuleSettings
+from save_message.model import RuleSaveSettings
 from save_message.model import SaveRule
 
-settings = RuleSettings(save_to="/")
+settings = RuleSettings(
+    action=MessageAction.SAVE_AND_DELETE, save_settings=RuleSaveSettings(path="/")
+)
 
 
 def test_save_rule_matches_glob_subject():

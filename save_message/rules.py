@@ -10,6 +10,8 @@ import ruamel.yaml
 
 from save_message.config import Config
 from save_message.config import DEFAULT_SAVE_TO
+from save_message.model import MessageAction
+from save_message.model import RuleSaveSettings
 from save_message.model import RuleSettings
 from save_message.model import SaveRule
 
@@ -53,7 +55,12 @@ class RulesMatcher:
             if not output_dir.strip():
                 raise ValueError("no output returned from prompt_save_dir_command")
 
-            return SaveRule(settings=RuleSettings(save_to=output_dir))
+            return SaveRule(
+                settings=RuleSettings(
+                    action=MessageAction.SAVE_AND_DELETE,
+                    save_settings=RuleSaveSettings(path=output_dir),
+                )
+            )
 
         else:
             for s in self.config.save_rules:

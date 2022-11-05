@@ -1,6 +1,7 @@
 from email.message import EmailMessage
 import email
 import email.policy
+from enum import Enum
 import fnmatch
 import re
 from typing import List
@@ -17,20 +18,47 @@ def match_field(match_rule: str, value: str) -> bool:
         return fnmatch.fnmatch(value, match_rule)
 
 
-class RuleSettings(BaseModel):
-    # settings, either for a specific rule, or at global (default) level
+class MessageAction(str, Enum):
+    # keep  (save the message but keep in inbox)
+    KEEP = "KEEP"
 
+    # ignore  (do not save, leave in inbox)
+    IGNORE = "IGNORE"
+
+    # delete  (do not save, delete from inbox)
+    DELETE = "DELETE"
+
+    # save_and_delete  (save, delete from inbox)
+    SAVE_AND_DELETE = "SAVE_AND_DELETE"
+
+
+class RuleSaveSettings(BaseModel):
     # The location to save the message to, which should be a folder. Environment
     # variables can be used here. The location must already exist.
-    save_to: str
+    path: str = None
 
     # If True, save full messages (as .eml files) in addition to
     # body/attachment saving.
     save_eml: bool = False
 
+    # If True, save the message's body (either HTML or txt) under the save path
+    save_body: bool = True
+
+    # The attachments to save. Can either be a glob or, if the first
+    # and last characters are forward-slashes, a regex.
+    save_attachments: str = "*"
+
     # If set, this should be a command which reads an HTML file from the
     # path $in and writes a PDF to the path $out.
     html_pdf_transform_command: str = None
+
+
+class RuleSettings(BaseModel):
+    # action to take for matching messages
+    action: MessageAction
+
+    # settings for saving (if action includes this)
+    save_settings: RuleSaveSettings = None
 
 
 class SaveRule(BaseModel):
