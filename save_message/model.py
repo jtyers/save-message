@@ -81,8 +81,14 @@ class ConfigBody(BaseModel):
     convert_html_to_pdf: bool = False
 
 
+class ConfigMaildir(BaseModel):
+    path: str
+
+
 class Config(BaseModel):
     default_settings: RuleSettings = None
+
+    maildir: ConfigMaildir
 
     body: ConfigBody = None
 
