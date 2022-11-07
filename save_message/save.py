@@ -4,6 +4,7 @@ from email.message import EmailMessage
 from email.message import MIMEPart
 import email
 import email.policy
+from fnmatch import fnmatch
 import mimetypes
 import logging
 import os
@@ -183,8 +184,9 @@ class MessageSaver:
 
         """
         message_name = get_message_name(msg)
+        save_settings = rule.settings.save_settings
 
-        dest_dir = os.path.join(rule.settings.save_settings.path, message_name)
+        dest_dir = os.path.join(save_settings.path, message_name)
         dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
 
         logger.info("saving to %s", dest_dir)
@@ -192,44 +194,60 @@ class MessageSaver:
 
         counter = 1
 
-        # First collate the 'body parts', i.e. non-attachments, which
-        # make up the body of the messge. We aim to save only one of
-        # these
-        body_parts = {
-            x.get_content_type(): x
-            for x in filter(lambda x: not x.is_attachment(), msg.walk())
-        }
+        if save_settings.save_body:
+            # First collate the 'body parts', i.e. non-attachments, which
+            # make up the body of the messge. We aim to save only one of
+            # these
+            body_parts = {
+                x.get_content_type(): x
+                for x in filter(lambda x: not x.is_attachment(), msg.walk())
+            }
 
-        saved = False
-        for preferred_content_type in ["text/html", "text/plain"]:
-            if preferred_content_type in body_parts.keys():
+            saved = False
+            for preferred_content_type in ["text/html", "text/plain"]:
+                if preferred_content_type in body_parts.keys():
+                    self.__save_part__(
+                        msg=msg,
+                        part=body_parts[preferred_content_type],
+                        dest_dir=dest_dir,
+                        msg_name_as_filename=True,
+                        rule=rule,
+                    )
+                    saved = True
+                    break
+
+            if not saved:
+                raise ValueError(
+                    f"could not find message body in a preferred format, the available body part content types are {body_parts.keys()}"
+                )
+
+        def part_is_matching_attachment(part):
+            if save_settings.save_attachments == "*":
+                result = part.is_attachment()
+
+            else:
+                result = part.is_attachment() and fnmatch(
+                    part.get_filename(), save_settings.save_attachments
+                )
+
+            return result
+
+        if save_settings.save_attachments:
+            for part in filter(
+                part_is_matching_attachment,
+                msg.walk(),
+            ):
                 self.__save_part__(
                     msg=msg,
-                    part=body_parts[preferred_content_type],
+                    part=part,
                     dest_dir=dest_dir,
-                    msg_name_as_filename=True,
+                    counter=counter,
+                    msg_name_as_filename=False,
                     rule=rule,
                 )
-                saved = True
-                break
+                counter += 1
 
-        if not saved:
-            raise ValueError(
-                f"could not find message body in a preferred format, the available body part content types are {body_parts.keys()}"
-            )
-
-        for part in filter(lambda x: x.is_attachment(), msg.walk()):
-            self.__save_part__(
-                msg=msg,
-                part=part,
-                dest_dir=dest_dir,
-                counter=counter,
-                msg_name_as_filename=False,
-                rule=rule,
-            )
-            counter += 1
-
-        if rule.settings.save_settings.save_eml:
+        if save_settings.save_eml:
             # finally, write the entire message to a file in the new directory
             message_file_name = f"{message_name}.eml"
             with open(os.path.join(dest_dir, message_file_name), "wb") as f:

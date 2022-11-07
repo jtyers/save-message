@@ -11,7 +11,7 @@ def do_delete(args):
     for k, m in maildir.search(
         subject=args.subject, from_=args.from_, to=args.to, date=args.date
     ):
-        logger.info(f'deleting: {m["date"], m["from"], m["subject"]}')
+        logger.info(f'deleting: {k}: {m["date"], m["from"], m["subject"]}')
         maildir.delete(k)
 
 
@@ -21,7 +21,7 @@ def do_apply_rules(args):
     for k, m in maildir.search(
         subject=args.subject, from_=args.from_, to=args.to, date=args.date
     ):
-        logger.info(f'apply_rules: {m["date"], m["from"], m["subject"]}')
+        logger.info(f'apply_rules: {k}: {m["date"], m["from"], m["subject"]}')
         maildir.apply_rules(k)
 
 

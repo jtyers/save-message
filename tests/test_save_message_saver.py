@@ -28,7 +28,7 @@ def temp_save_dir() -> str:
     result = tempfile.mkdtemp()
     yield result
 
-    shutil.rmtree(result)
+    # shutil.rmtree(result)
 
 
 def do_test_message_saver(
@@ -169,6 +169,29 @@ def test_simple_text_body_no_atts_with_save_eml_rule(temp_save_dir):
     )
 
 
+def test_simple_text_body_no_atts_with_save_eml_rule_and_no_save_body(temp_save_dir):
+    message = create_message(template="simple_text_only")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=True,
+            save_body=False,
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=True,
+        check_part_files={},
+        rule_settings=rule_settings,
+    )
+
+
 def test_html_body_ics_att(temp_save_dir):
     message = create_message(template="text_html_with_calendar_attachment")
     message_parts = list(message.walk())
@@ -212,6 +235,124 @@ def test_html_body_ics_att_with_html_pdf_transform(temp_save_dir):
         check_part_files={
             f"{message_name}.pdf": None,  ## None means don't check content
             "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
+        },
+        rule_settings=rule_settings,
+    )
+
+
+def test_html_body_ics_att_no_save_body(temp_save_dir):
+    message = create_message(template="text_html_with_calendar_attachment")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            save_body=False,
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
+        },
+        rule_settings=rule_settings,
+    )
+
+
+def test_html_body_ics_att_with_html_pdf_transform_no_save_body(temp_save_dir):
+    html_pdf_transform_command = "prince $in -o $out"
+    message = create_message(template="text_html_with_calendar_attachment")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            html_pdf_transform_command=html_pdf_transform_command,
+            save_body=False,
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
+        },
+        rule_settings=rule_settings,
+    )
+
+
+def test_html_body_attachments_glob(temp_save_dir):
+    message = create_message(template="text_html_with_multiple_large_attachments")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            save_attachments="IMG_7806*",
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            f"{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+        },
+        check_part_binary_files={
+            "IMG_7806 1 .JPG": message_parts[4].get_payload(decode=True),
+        },
+        rule_settings=rule_settings,
+    )
+
+
+def test_html_body_attachments_glob_2(temp_save_dir):
+    message = create_message(template="text_html_with_multiple_large_attachments")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            save_attachments="IMG_7808*",
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            f"{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+        },
+        check_part_binary_files={
+            "IMG_7808 1 .JPG": message_parts[6].get_payload(decode=True),
         },
         rule_settings=rule_settings,
     )
