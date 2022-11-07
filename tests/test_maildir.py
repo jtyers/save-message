@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 from .context import save_message  # noqa: F401
 
+from email.policy import default
+
 from save_message.model import MessageAction
 from save_message.model import RuleSettings
 from save_message.model import SaveRule
@@ -78,7 +80,11 @@ def test_delete_with_force_deletes(maildir_):
     )
 
 
+@patch("save_message.maildir.message_from_string")
+@patch("save_message.maildir.default")
 def do_apply_rules_test(
+    default,
+    message_from_string,
     maildir_,
     rule: SaveRule,
     should_save: bool,
@@ -90,6 +96,12 @@ def do_apply_rules_test(
         "from": "jonny@example.com",
         "subject": "My test message",
     }
+    email_message = {
+        "em_date": "yesterday",
+        "em_from": "jonny@example.com",
+        "em_subject": "My test message",
+    }
+    message_from_string.return_value = email_message
 
     maildir_.maildir.get.return_value = message
     maildir_.rules_matcher.match_save_rule_or_prompt.return_value = rule
@@ -99,6 +111,7 @@ def do_apply_rules_test(
     maildir_.apply_rules(key)
 
     maildir_.maildir.get.assert_called_with(key)
+    message_from_string.assert_called_with(str(message), policy=default)
 
     if should_delete:
         maildir_.delete.assert_called_with(key)
@@ -106,7 +119,7 @@ def do_apply_rules_test(
         maildir_.delete.assert_not_called
 
     if should_save:
-        maildir_.message_saver.save_message.assert_called_with(message, rule)
+        maildir_.message_saver.save_message.assert_called_with(email_message, rule)
     else:
         maildir_.message_saver.save_message.assert_not_called
 

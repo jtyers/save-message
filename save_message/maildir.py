@@ -1,7 +1,9 @@
 from argparse import Namespace
 from datetime import datetime
 from dateutil.parser import parse
+from email import message_from_string
 from email.header import Header
+from email.policy import default
 from email.utils import parseaddr
 import fnmatch
 import logging
@@ -141,16 +143,20 @@ class Maildir:
 
     def apply_rules(self, key):
         msg = self.get(key)
+        email_msg = message_from_string(str(msg), policy=default)
+
         rule = self.rules_matcher.match_save_rule_or_prompt(msg)
 
+        logger.info("matching rule for key %s: %s", key, rule)
+
         if rule.settings.action == MessageAction.KEEP:
-            self.message_saver.save_message(msg, rule)
+            self.message_saver.save_message(email_msg, rule)
 
         elif rule.settings.action == MessageAction.IGNORE:
             pass  # do nothing
 
         elif rule.settings.action == MessageAction.SAVE_AND_DELETE:
-            self.message_saver.save_message(msg, rule)
+            self.message_saver.save_message(email_msg, rule)
             self.delete(key)
 
         elif rule.settings.action == MessageAction.DELETE:
@@ -180,7 +186,6 @@ class Maildir:
         for k, m in self.maildir.iteritems():
             try:
                 if matchers.matches(m):
-                    # em = message_from_string(str(m), policy=default)
                     yield (k, m)
 
                 counter += 1
