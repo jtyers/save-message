@@ -38,13 +38,21 @@ def do_test_message_saver(
     check_part_files: dict = {},
     check_part_binary_files: dict = {},
     rule_settings: RuleSettings = None,
+    files_in_temp_save_dir: bool = False,
 ):
-    """Run the test to save the given message, then verify the .eml file is present and correct, then verify particular payload files have been created.
+    """Run the test to save the given message, then verify the .eml file
+    is present and correct, then verify particular payload files have
+    been created.
 
     check_part_files should be a dict of filename -> payload (as str).
+    check_part_binary_files is as for check_part_files but binaries.
 
     If rule is specified, this will be the rule returned by RulesMatcher for
     the message.
+
+    If files_in_temp_save_dir is True, look for check_part_files and
+    check_part_binary_files in temp_save_dir directly, not in a directory
+    named after the message.
     """
     # given
     # use real MessagePartSaver - we consciously test both here,
@@ -67,7 +75,11 @@ def do_test_message_saver(
     # then
 
     message_name = get_message_name(message)
-    message_save_dir = os.path.join(temp_save_dir, message_name)
+    if files_in_temp_save_dir:
+        message_save_dir = temp_save_dir
+    else:
+        message_save_dir = os.path.join(temp_save_dir, message_name)
+
     message_eml_file = os.path.join(message_save_dir, f"{message_name}.eml")
 
     if check_eml_file:
@@ -355,4 +367,95 @@ def test_html_body_attachments_glob_2(temp_save_dir):
             "IMG_7808 1 .JPG": message_parts[6].get_payload(decode=True),
         },
         rule_settings=rule_settings,
+    )
+
+
+def test_html_body_attachments_null_should_match_no_attachments(temp_save_dir):
+    message = create_message(template="text_html_with_multiple_large_attachments")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            save_attachments=None,
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            f"{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+        },
+        rule_settings=rule_settings,
+    )
+
+
+def test_flatten_single_file_messages_for_attachment(temp_save_dir):
+    message = create_message(template="text_html_with_multiple_large_attachments")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            save_attachments="IMG_7808*",
+            flatten_single_file_messages=True,
+            save_body=False,
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_binary_files={
+            f"{message_name}.JPG": message_parts[6].get_payload(decode=True),
+        },
+        rule_settings=rule_settings,
+        files_in_temp_save_dir=True,
+    )
+
+
+def test_flatten_single_file_messages_for_body(temp_save_dir):
+    message = create_message(template="text_html_with_multiple_large_attachments")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            save_attachments=None,
+            flatten_single_file_messages=True,
+            save_body=True,
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            f"{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+        },
+        rule_settings=rule_settings,
+        files_in_temp_save_dir=True,
     )

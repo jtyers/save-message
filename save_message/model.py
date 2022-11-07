@@ -46,11 +46,16 @@ class RuleSaveSettings(BaseModel):
 
     # The attachments to save. Can either be a glob or, if the first
     # and last characters are forward-slashes, a regex.
-    save_attachments: str = "*"
+    save_attachments: str | None = "*"
 
     # If set, this should be a command which reads an HTML file from the
     # path $in and writes a PDF to the path $out.
     html_pdf_transform_command: str = None
+
+    # If set, where a message has just one file to save (after processing
+    # save_body and save_attachments), save that file directly under 'path'
+    # rather than in a directory for the message
+    flatten_single_file_messages: bool = False
 
 
 class RuleSettings(BaseModel):

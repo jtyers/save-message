@@ -254,6 +254,23 @@ class MessageSaver:
                 f.write(msg.as_bytes())
                 logger.debug("saved %s", message_file_name)
 
+        # Once all files are written we examine whether
+        # flatten_single_file_messages is enabled, and decide to flatten
+        # based on the contents of dest_dir.
+        if save_settings.flatten_single_file_messages:
+            saved_files = os.listdir(dest_dir)
+
+            if len(saved_files) == 1:
+                # if a single file, then move to parent dir with same ext
+                ext = saved_files[0][saved_files[0].rindex(".") :]
+
+                message_single_file_name = f"{message_name}{ext}"
+                shutil.move(
+                    os.path.join(dest_dir, saved_files[0]),
+                    os.path.join(save_settings.path, message_single_file_name),
+                )
+                shutil.rmtree(dest_dir)
+
     def __save_part__(
         self,
         msg,
