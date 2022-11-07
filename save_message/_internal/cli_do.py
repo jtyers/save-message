@@ -15,6 +15,16 @@ def do_delete(args):
         maildir.delete(k)
 
 
+def do_apply_rules(args):
+    maildir: Maildir = args.og.provide(Maildir)
+
+    for k, m in maildir.search(
+        subject=args.subject, from_=args.from_, to=args.to, date=args.date
+    ):
+        logger.info(f'apply_rules: {m["date"], m["from"], m["subject"]}')
+        maildir.apply_rules(k)
+
+
 def do_search(args):
     maildir: Maildir = args.og.provide(Maildir)
 

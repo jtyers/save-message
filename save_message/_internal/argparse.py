@@ -21,6 +21,13 @@ def create_parser():
         help="Be more verbose (x2 for more)",
     )
 
+    parser.add_argument(
+        "--force-deletes",
+        action="store_true",
+        default=False,
+        help="Don't ask before deleting messages",
+    )
+
     subparsers = parser.add_subparsers(help="sub-command help")
 
     do_search = subparsers.add_parser("search", help="Find messages")
@@ -40,5 +47,16 @@ def create_parser():
         "--from", dest="from_", help="From address (can include wildcards)"
     )
     do_delete.set_defaults(func=cli_do.do_delete)
+
+    do_apply_rules = subparsers.add_parser(
+        "apply-rules", help="Apply rules for messages"
+    )
+    do_apply_rules.add_argument("--subject", help="Subject (can include wildcards)")
+    do_apply_rules.add_argument("--to", help="To address (can include wildcards)")
+    do_apply_rules.add_argument("--date", help="Date received")
+    do_apply_rules.add_argument(
+        "--from", dest="from_", help="From address (can include wildcards)"
+    )
+    do_apply_rules.set_defaults(func=cli_do.do_apply_rules)
 
     return parser
