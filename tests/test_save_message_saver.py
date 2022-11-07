@@ -17,7 +17,6 @@ from save_message.model import MessageAction
 from save_message.model import RuleSaveSettings
 from save_message.model import RuleSettings
 from save_message.model import SaveRule
-from save_message.rules import RulesMatcher
 from save_message.save import get_header_preamble
 from save_message.save import get_message_name
 from save_message.save import MessagePartSaver
@@ -59,14 +58,11 @@ def do_test_message_saver(
     )
     config.default_settings = default_settings
 
-    rules_matcher = MagicMock(spec=RulesMatcher)
-    rules_matcher.match_save_rule_or_prompt.return_value = SaveRule(
-        settings=rule_settings or default_settings
-    )
+    rule = SaveRule(settings=rule_settings or default_settings)
 
     # when
-    message_saver = MessageSaver(config, message_part_saver, rules_matcher)
-    message_saver.save_message(message)
+    message_saver = MessageSaver(config, message_part_saver)
+    message_saver.save_message(message, rule)
 
     # then
 

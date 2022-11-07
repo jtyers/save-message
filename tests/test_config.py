@@ -6,6 +6,8 @@ import tempfile
 from save_message.config import load_config
 from save_message.model import Config
 from save_message.model import ConfigMaildir
+from save_message.model import MessageAction
+from save_message.model import RuleSettings
 from save_message.model import SaveRule
 
 
@@ -23,6 +25,13 @@ def test_config(temp_save_dir):
 
     maildir:
         path: /mail
+
+    save_rules:
+        - match_subject: Foo*
+          match_from: bar*@example.com
+
+          settings:
+            action: KEEP
     """
     filename = os.path.join(temp_save_dir, "config.yaml")
     with open(filename, "w") as c:
@@ -30,5 +39,13 @@ def test_config(temp_save_dir):
 
     config = load_config(filename)
     assert config == Config(
-        maildir=ConfigMaildir(path="/mail"), default_save_to="/foo/bar"
+        maildir=ConfigMaildir(path="/mail"),
+        default_save_to="/foo/bar",
+        save_rules=[
+            SaveRule(
+                match_subject="Foo*",
+                match_from="bar*@example.com",
+                settings=RuleSettings(action=MessageAction.KEEP),
+            )
+        ],
     )

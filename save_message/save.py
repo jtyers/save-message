@@ -172,24 +172,17 @@ class MessageSaver:
         self,
         config: Config,
         message_part_saver: MessagePartSaver,
-        rules_matcher: RulesMatcher,
     ):
         self.config = config
         self.message_part_saver = message_part_saver
-        self.rules_matcher = rules_matcher
 
-    def save_message(self, msg: EmailMessage, prompt_save_dir_command: str = None):
+    def save_message(self, msg: EmailMessage, rule: SaveRule):
         """Save the message in `input_file`, using rules to determine
-        where to save. If prompt_save_dir_command is specified, that is treated
-        as a command to run to determine the save location instead (generally it's
-        expected that this command would prompt the user for a choice, e.g. via `fzf`).
+        where to save. The rule is the rule whose actions should
+        be applied.
+
         """
         message_name = get_message_name(msg)
-
-        rule = self.rules_matcher.match_save_rule_or_prompt(
-            msg, prompt_save_dir_command
-        )
-        logger.debug("matching_rule: %s", rule)
 
         dest_dir = os.path.join(rule.settings.save_settings.path, message_name)
         dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))

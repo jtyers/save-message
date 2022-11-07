@@ -1,3 +1,4 @@
+from argparse import Namespace
 from datetime import datetime
 from dateutil.parser import parse
 from email.header import Header
@@ -10,6 +11,9 @@ import re
 from typing import Generator
 
 from save_message.model import Config
+from save_message.model import MessageAction
+from save_message.rules import RulesMatcher
+from save_message.save import MessageSaver
 
 logger = logging.getLogger(__name__)
 
@@ -100,12 +104,62 @@ class Matchers:
 
 
 class Maildir:
-    def __init__(self, config: Config):
+    def __init__(
+        self,
+        config: Config,
+        args: Namespace,
+        rules_matcher: RulesMatcher,
+        message_saver: MessageSaver,
+    ):
         self.config = config
+        self.args = args
+        self.rules_matcher = rules_matcher
+        self.message_saver = message_saver
+
         self.maildir = mailbox.Maildir(dirname=config.maildir.path, create=False)
 
+    def get(self, key):
+        return self.maildir.get(key)
+
     def delete(self, key):
-        self.maildir.remove(key)
+        if self.args.force_deletes:
+            self.maildir.remove(key)
+
+        else:
+            msg = self.get(key)
+
+            print()
+            print(msg["date"], msg["from"], msg["subject"])
+            response = input("Really delete this message? (type YES to proceed) ")
+            print()
+
+            if response == "YES":
+                self.maildir.remove(key)
+                print("  deleted")
+            else:
+                print("  skipped delete")
+
+    def apply_rules(self, key):
+        msg = self.get(key)
+        rule = self.rules_matcher.match_save_rule_or_prompt(msg)
+
+        if rule.settings.action == MessageAction.KEEP:
+            self.message_saver.save_message(msg, rule)
+
+        elif rule.settings.action == MessageAction.IGNORE:
+            pass  # do nothing
+
+        elif rule.settings.action == MessageAction.SAVE_AND_DELETE:
+            self.message_saver.save_message(msg, rule)
+            self.delete(key)
+
+        elif rule.settings.action == MessageAction.DELETE:
+            self.delete(key)
+
+        else:
+            raise ValueError(f"unhandled MessageAction {rule.action}")
+
+        logger.debug("rule: %s", rule)
 
     def search(
         self,
