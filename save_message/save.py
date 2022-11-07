@@ -190,7 +190,7 @@ class MessageSaver:
         dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
 
         logger.info("saving to %s", dest_dir)
-        os.makedirs(dest_dir, exist_ok=True)
+        os.makedirs(dest_dir, exist_ok=False)
 
         counter = 1
 
@@ -259,6 +259,7 @@ class MessageSaver:
         # based on the contents of dest_dir.
         if save_settings.flatten_single_file_messages:
             saved_files = os.listdir(dest_dir)
+            new_dest_dir = os.path.expanduser(os.path.expandvars(save_settings.path))
 
             if len(saved_files) == 1:
                 # if a single file, then move to parent dir with same ext
@@ -267,7 +268,7 @@ class MessageSaver:
                 message_single_file_name = f"{message_name}{ext}"
                 shutil.move(
                     os.path.join(dest_dir, saved_files[0]),
-                    os.path.join(save_settings.path, message_single_file_name),
+                    os.path.join(new_dest_dir, message_single_file_name),
                 )
                 shutil.rmtree(dest_dir)
 
