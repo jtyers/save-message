@@ -37,15 +37,28 @@ def merge_models(*args):
     to determine the values of fields for each instance."""
 
     for arg in args:
-        assert hasattr(arg, "__fields_set__")
+        assert hasattr(arg, "__fields_set__") or arg is None
 
-    first = args[0]
+    # find the first non-None argument
+    first = None
+    largs = list(args)
+    while first is None and len(largs) > 0:
+        first = largs.pop(0)
+
+    # if first is none, we must've exhausted the
+    # list, which means all args were None
+    if first is None:
+        return None
+
     first_dict = dict(first)
     new_type = type(first)
     new_props = dict(first)
 
     if len(args) > 1:
-        for arg in args[1:]:
+        for arg in args:
+            if arg is None:
+                continue
+
             assert type(arg) == new_type
             arg_dict = dict(arg)
 

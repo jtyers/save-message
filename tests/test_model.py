@@ -72,3 +72,16 @@ def test_rule_settings_merge():
             path="/2", save_body=False, save_eml=True, save_attachments="*.jpg"
         ),
     )
+
+    assert merge_models(settings_0, settings_1, settings_2) == RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path="/2", save_body=False, save_eml=True, save_attachments="*.jpg"
+        ),
+    )
+
+    assert merge_models(None, None) == None
+
+    assert merge_models(settings_0, None) == settings_0
+
+    assert merge_models(None, settings_1) == settings_1
