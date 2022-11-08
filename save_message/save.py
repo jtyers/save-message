@@ -141,6 +141,9 @@ class MessagePartSaver:
         if part.get_content_maintype() == "multipart":
             return
 
+        if os.path.exists(dest_path):
+            raise ValueError(f"path {dest_path} exists, aborting")
+
         with open(dest_path, "wb") as fp2:
             # if this part is not an attachment, it is the body of the message, so
             # we prepend some headers to give context
@@ -166,6 +169,9 @@ class MessagePartSaver:
 
         with temp_save_dir() as td:
             input_filename = os.path.join(td, "inputmsg")
+
+            if os.path.exists(input_filename):
+                raise ValueError(f"path {input_filename} exists, aborting")
 
             with open(input_filename, "wb") as f:
                 f.write(part.get_payload(decode=True))
@@ -268,7 +274,12 @@ class MessageSaver:
         if save_settings.save_eml:
             # finally, write the entire message to a file in the new directory
             message_file_name = f"{message_name}.eml"
-            with open(os.path.join(dest_dir, message_file_name), "wb") as f:
+            message_path = os.path.join(dest_dir, message_file_name)
+
+            if os.path.exists(message_path):
+                raise ValueError(f"path {message_path} exists, aborting")
+
+            with open(message_path, "wb") as f:
                 f.write(msg.as_bytes())
                 logger.debug("saved %s", message_file_name)
 
