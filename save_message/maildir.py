@@ -7,9 +7,10 @@ import mailbox
 from mailbox import MaildirMessage
 from typing import Generator
 
-from save_message.matchers import MatcherSet
+from save_message.matchers import save_rule_to_matcher
 from save_message.model import Config
 from save_message.model import MessageAction
+from save_message.model import RuleMatch
 from save_message.rules import RulesMatcher
 from save_message.save import MessageSaver
 
@@ -87,16 +88,20 @@ class Maildir:
     ) -> Generator[MaildirMessage, None, None]:
         counter = 0
 
-        matchers = MatcherSet(
-            match_subject=subject,
-            match_from=from_,
-            match_to=to,
-            match_date=date,
+        save_rule_matcher = save_rule_to_matcher(
+            [
+                RuleMatch(
+                    subject=subject,
+                    from_=from_,
+                    to=to,
+                    date=date,
+                )
+            ]
         )
 
         for k, m in self.maildir.iteritems():
             try:
-                if matchers.matches(m):
+                if save_rule_matcher.matches(m):
                     yield (k, m)
 
                 counter += 1

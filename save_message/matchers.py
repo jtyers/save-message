@@ -27,6 +27,9 @@ class WildcardMatcher(Matcher):
             else re.compile(fnmatch.translate(self.match_criteria))
         )
 
+    def __repr__(self):
+        return f"WildcardMatcher(match_criteria={self.match_criteria})"
+
     def __matches_value__(self, value: str) -> bool:
         if value is None:
             return False
@@ -40,6 +43,9 @@ class WildcardMatcher(Matcher):
 class SubjectMatcher(WildcardMatcher):
     def __init__(self, match_subject):
         super().__init__(match_subject)
+
+    def __repr__(self):
+        return f"SubjectMatcher(to={self.match_criteria})"
 
     def matches(self, msg: MaildirMessage) -> bool:
         return self.__matches_value__(msg["subject"])
@@ -55,6 +61,9 @@ class SubjectMatcher(WildcardMatcher):
 class FromMatcher(WildcardMatcher):
     def __init__(self, match_from):
         super().__init__(match_from)
+
+    def __repr__(self):
+        return f"FromMatcher(to={self.match_criteria})"
 
     def matches(self, msg: MaildirMessage) -> bool:
         from_parts = parseaddr(msg["from"])
@@ -74,6 +83,9 @@ class ToMatcher(WildcardMatcher):
     def __init__(self, match_to):
         super().__init__(match_to)
 
+    def __repr__(self):
+        return f"ToMatcher(to={self.match_criteria})"
+
     def matches(self, msg: MaildirMessage) -> bool:
         to_parts = parseaddr(msg["to"])
         return self.__matches_value__(to_parts[1]) or self.__matches_value__(msg["to"])
@@ -90,6 +102,9 @@ class DateMatcher(Matcher):
     def __init__(self, match_date: datetime):
         self.match_date = parse(match_date)
 
+    def __repr__(self):
+        return f"DateMatcher(match_date={self.match_date})"
+
     def matches(self, msg: MaildirMessage) -> bool:
         msg_date = parse(msg["date"])
 
@@ -103,12 +118,15 @@ class DateMatcher(Matcher):
         )
 
 
-class MatcherSet:
+class AndMatcher(Matcher):
     def __init__(
         self,
         matchers: list[Matcher] = [],
     ):
         self.matchers = list(matchers)
+
+    def __repr__(self):
+        return f"AndMatcher(matchers={self.matchers})"
 
     def matches(self, msg):
         for matcher in self.matchers:
@@ -120,13 +138,41 @@ class MatcherSet:
     def __eq__(self, other) -> bool:
         return (
             other is not None
-            and type(other) is MatcherSet
+            and type(other) is AndMatcher
             and other.matchers == self.matchers
         )
 
 
-def save_rule_to_matcher_sets(rule_matches: list[RuleMatch]) -> list[MatcherSet]:
-    matcher_sets = []
+class OrMatcher(Matcher):
+    def __init__(
+        self,
+        matchers: list[Matcher] = [],
+    ):
+        self.matchers = list(matchers)
+
+    def __repr__(self):
+        return f"OrMatcher(matchers={self.matchers})"
+
+    def matches(self, msg):
+        for matcher in self.matchers:
+            if matcher.matches(msg):
+                return True
+
+        return False
+
+    def __eq__(self, other) -> bool:
+        return (
+            other is not None
+            and type(other) is OrMatcher
+            and other.matchers == self.matchers
+        )
+
+
+def save_rule_to_matcher(rule_matches: list[RuleMatch]) -> Matcher:
+    """Creates a matcher that matches on the rules given in the
+    list of RuleMatches. Each RuleMatch is treated as an OR, and
+    the attributes in each RuleMatch are ANDed together."""
+    or_matcher_matches = []
 
     for rule_match in rule_matches:
         matchers = []
@@ -140,6 +186,6 @@ def save_rule_to_matcher_sets(rule_matches: list[RuleMatch]) -> list[MatcherSet]
         if rule_match.date:
             matchers.append(DateMatcher(match_date=rule_match.date))
 
-        matcher_sets.append(MatcherSet(matchers))
+        or_matcher_matches.append(AndMatcher(matchers))
 
-    return matcher_sets
+    return OrMatcher(or_matcher_matches)

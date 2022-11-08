@@ -10,7 +10,7 @@ import ruamel.yaml
 
 from save_message.config import Config
 from save_message.config import DEFAULT_SAVE_TO
-from save_message.matchers import save_rule_to_matcher_sets
+from save_message.matchers import save_rule_to_matcher
 from save_message.model import MessageAction
 from save_message.model import RuleSaveSettings
 from save_message.model import RuleSettings
@@ -64,10 +64,9 @@ class RulesMatcher:
         #             )
         #
         for save_rule in self.config.save_rules:
-            matcher_sets = save_rule_to_matcher_sets(save_rule)
-            for matcher_set in matcher_sets:
-                if matcher_set.matches(msg):
-                    return save_rule
+            save_rule_matcher = save_rule_to_matcher(save_rule)
+            if save_rule_matcher.matches(msg):
+                return save_rule
 
         return SaveRule(settings=self.config.default_settings, matches=[])
 
