@@ -67,7 +67,7 @@ def do_test_message_saver(
     )
     config.default_settings = default_settings
 
-    rule = SaveRule(settings=rule_settings or default_settings)
+    rule = SaveRule(settings=rule_settings or default_settings, matches=[])
 
     # when
     message_saver = MessageSaver(config, message_part_saver)

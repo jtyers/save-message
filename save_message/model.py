@@ -1,3 +1,4 @@
+from datetime import datetime
 from email.message import EmailMessage
 import email
 import email.policy
@@ -140,6 +141,17 @@ class RuleSettings(BaseModel):
     save_settings: RuleSaveSettings = None
 
 
+class RuleMatch(BaseModel):
+    # match on the subject, from and to fields
+    # Match values are treated as globs and passed to fnmatch, unless the
+    # match value is enclosed in forward slashes, in which case it's treated
+    # as a regex.
+    subject: str = None
+    from_: str = None
+    to: str = None
+    date: str = None
+
+
 class SaveRule(BaseModel):
     # match on the subject, from and to fields
     # Match values are treated as globs and passed to fnmatch, unless the
@@ -149,39 +161,42 @@ class SaveRule(BaseModel):
     match_from: str = None
     match_to: str = None
 
+    matches: list[RuleMatch]
+
     settings: RuleSettings
 
-    def matches(self, msg: EmailMessage):
-        result = True
 
-        from_parts = email.utils.parseaddr(msg["from"])
-        to_parts = email.utils.parseaddr(msg["to"])
-
-        tries = {
-            self.match_subject: [msg["subject"]],
-            self.match_from: [
-                from_parts[1],
-                msg["from"],
-            ],  # match on email addr only first
-            self.match_to: [to_parts[1], msg["to"]],  # match on email addr only first
-        }
-
-        for _try, values in tries.items():
-            if not _try:
-                continue
-
-            any_match = False
-            for value in values:
-                if not value:
-                    continue
-                if match_field(_try, value):
-                    any_match = True
-                    break
-
-            if not any_match:
-                result = False
-
-        return result
+#     def matches(self, msg: EmailMessage):
+#         result = True
+#
+#         from_parts = email.utils.parseaddr(msg["from"])
+#         to_parts = email.utils.parseaddr(msg["to"])
+#
+#         tries = {
+#             self.match_subject: [msg["subject"]],
+#             self.match_from: [
+#                 from_parts[1],
+#                 msg["from"],
+#             ],  # match on email addr only first
+#             self.match_to: [to_parts[1], msg["to"]],  # match on email addr only first
+#         }
+#
+#         for _try, values in tries.items():
+#             if not _try:
+#                 continue
+#
+#             any_match = False
+#             for value in values:
+#                 if not value:
+#                     continue
+#                 if match_field(_try, value):
+#                     any_match = True
+#                     break
+#
+#             if not any_match:
+#                 result = False
+#
+#         return result
 
 
 class ConfigBody(BaseModel):

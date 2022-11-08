@@ -10,6 +10,7 @@ import ruamel.yaml
 
 from save_message.config import Config
 from save_message.config import DEFAULT_SAVE_TO
+from save_message.matchers import save_rule_to_matcher_sets
 from save_message.model import MessageAction
 from save_message.model import RuleSaveSettings
 from save_message.model import RuleSettings
@@ -32,42 +33,43 @@ class RulesMatcher:
         a new (otherwise blank) SaveRule with the save_dir set to the
         output from that command, and return it."""
 
-        if prompt_save_dir_command:
-            logger.debug("running %s", shlex.split(prompt_save_dir_command))
-            output = subprocess.run(
-                prompt_save_dir_command,
-                text=True,
-                check=True,
-                shell=True,
-                stdout=subprocess.PIPE,
-                # capture_output=True,
-                # leave stdin and stderr non-piped so they are passed to
-                # the terminal (needed for fzf)
-            )
-            logger.debug("done")
+        #         if prompt_save_dir_command:
+        #             logger.debug("running %s", shlex.split(prompt_save_dir_command))
+        #             output = subprocess.run(
+        #                 prompt_save_dir_command,
+        #                 text=True,
+        #                 check=True,
+        #                 shell=True,
+        #                 stdout=subprocess.PIPE,
+        #                 # capture_output=True,
+        #                 # leave stdin and stderr non-piped so they are passed to
+        #                 # the terminal (needed for fzf)
+        #             )
+        #             logger.debug("done")
+        #
+        #             lines = output.stdout.split("\n")
+        #             if len(lines) == 0:
+        #                 raise ValueError("no output returned from prompt_save_dir_command")
+        #
+        #             logger.debug(" -> %s", lines)
+        #             output_dir = lines[0]
+        #             if not output_dir.strip():
+        #                 raise ValueError("no output returned from prompt_save_dir_command")
+        #
+        #             return SaveRule(
+        #                 settings=RuleSettings(
+        #                     action=MessageAction.SAVE_AND_DELETE,
+        #                     save_settings=RuleSaveSettings(path=output_dir),
+        #                 )
+        #             )
+        #
+        for save_rule in self.config.save_rules:
+            matcher_sets = save_rule_to_matcher_sets(save_rule)
+            for matcher_set in matcher_sets:
+                if matcher_set.matches(msg):
+                    return save_rule
 
-            lines = output.stdout.split("\n")
-            if len(lines) == 0:
-                raise ValueError("no output returned from prompt_save_dir_command")
-
-            logger.debug(" -> %s", lines)
-            output_dir = lines[0]
-            if not output_dir.strip():
-                raise ValueError("no output returned from prompt_save_dir_command")
-
-            return SaveRule(
-                settings=RuleSettings(
-                    action=MessageAction.SAVE_AND_DELETE,
-                    save_settings=RuleSaveSettings(path=output_dir),
-                )
-            )
-
-        else:
-            for s in self.config.save_rules:
-                if s.matches(msg):
-                    return s
-
-            return SaveRule(settings=self.config.default_settings)
+        return SaveRule(settings=self.config.default_settings, matches=[])
 
 
 class RulesAdder:

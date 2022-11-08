@@ -3,6 +3,8 @@ from email.message import EmailMessage
 import os
 import subprocess
 
+from save_message.config import load_config
+
 
 def assert_file_has_content(filename, content, binary=False):
     with open(f"{filename}.desired", "wb" if binary else "w") as fdm:
@@ -41,3 +43,11 @@ def create_message(template: str, **kwargs) -> EmailMessage:
     return email.message_from_string(
         create_message_string(template, **kwargs), policy=email.policy.default
     )
+
+
+def load_config_from_string(temp_save_dir, input_):
+    filename = os.path.join(temp_save_dir, "config.yaml")
+    with open(filename, "w") as c:
+        c.write(input_)
+
+    return load_config(filename)
