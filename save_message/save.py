@@ -16,6 +16,7 @@ import tempfile
 
 from save_message.rules import RulesMatcher
 from save_message.model import Config
+from save_message.model import RuleSaveSettings
 from save_message.model import SaveRule
 from save_message.model import merge_models
 
@@ -84,16 +85,29 @@ def get_filename_for_part(
     return filename, ext
 
 
-def get_message_name(msg):
+def get_message_name(msg, fmt: str):
     subject = sanitize_to_filename(msg["subject"])
 
     from_parts = email.utils.parseaddr(msg["from"])
+    to_parts = email.utils.parseaddr(msg["to"])
     date = datetime.strptime(msg["date"], "%a, %d %b %Y %H:%M:%S %z")
 
-    name_from = from_parts[0] or from_parts[1]
-    name_date = date.strftime("%b%y")
+    from_name = from_parts[0] or from_parts[1]
+    from_addr = from_parts[1]
+    to_name = to_parts[0] or to_parts[1]
+    to_addr = to_parts[1]
+    month_year = date.strftime("%b%y")
+    day_month_year = date.strftime("%d%b%y")
 
-    return f"{name_from} {subject} {name_date}"
+    return fmt.format(
+        subject=subject,
+        from_name=from_name,
+        from_addr=from_addr,
+        to_name=to_name,
+        to_addr=to_addr,
+        month_year=month_year,
+        date=day_month_year,
+    )
 
 
 @contextlib.contextmanager
@@ -185,10 +199,10 @@ class MessageSaver:
         Config) into account.
 
         """
-        message_name = get_message_name(msg)
         save_settings = merge_models(
             self.config.default_settings.save_settings, rule.settings.save_settings
         )
+        message_name = get_message_name(msg, fmt=save_settings.message_name)
 
         dest_dir = os.path.join(save_settings.path, message_name)
         dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
@@ -215,7 +229,7 @@ class MessageSaver:
                         part=body_parts[preferred_content_type],
                         dest_dir=dest_dir,
                         msg_name_as_filename=True,
-                        rule=rule,
+                        save_settings=save_settings,
                     )
                     saved = True
                     break
@@ -247,7 +261,7 @@ class MessageSaver:
                     dest_dir=dest_dir,
                     counter=counter,
                     msg_name_as_filename=False,
-                    rule=rule,
+                    save_settings=save_settings,
                 )
                 counter += 1
 
@@ -282,10 +296,10 @@ class MessageSaver:
         part,
         dest_dir,
         msg_name_as_filename: bool,
-        rule: SaveRule,
+        save_settings: RuleSaveSettings,
         counter=None,
     ):
-        msg_name = get_message_name(msg)
+        msg_name = get_message_name(msg, save_settings.message_name)
         filename, ext = get_filename_for_part(
             msg_name, part, counter, msg_name_as_filename=msg_name_as_filename
         )
@@ -293,7 +307,7 @@ class MessageSaver:
 
         if (
             part.get_content_type() == "text/html"
-            and rule.settings.save_settings.html_pdf_transform_command
+            and save_settings.html_pdf_transform_command
         ):
             dest_path = dest_path[: dest_path.rindex(".")] + ".pdf"
 
@@ -302,7 +316,7 @@ class MessageSaver:
                 msg=msg,
                 part=part,
                 dest_path=dest_path,
-                html_pdf_transform_command=rule.settings.save_settings.html_pdf_transform_command,
+                html_pdf_transform_command=save_settings.html_pdf_transform_command,
             )
         else:
             self.message_part_saver.save_part(

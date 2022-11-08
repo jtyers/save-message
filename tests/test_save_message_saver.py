@@ -75,7 +75,9 @@ def do_test_message_saver(
 
     # then
 
-    message_name = get_message_name(message)
+    message_name = get_message_name(
+        message, fmt=rule.settings.save_settings.message_name
+    )
     if files_in_temp_save_dir:
         message_save_dir = temp_save_dir
     else:
@@ -104,6 +106,8 @@ def do_test_message_saver(
     )
     if check_eml_file:
         expected_files.append(f"{message_name}.eml")
+
+    expected_files = [x.format(message_name=message_name) for x in expected_files]
     expected_files.sort()
 
     actual_files = os.listdir(message_save_dir)
@@ -113,18 +117,22 @@ def do_test_message_saver(
 
     # finally, check file contents for each file specified, first in
     # text mode then in binary mode
-    for filename, payload in check_part_files.items():
+    for filename_fmt, payload in check_part_files.items():
         if not payload:
             continue
+
+        filename = filename_fmt.format(message_name=message_name)
 
         assert_file_has_content(
             os.path.join(message_save_dir, filename),
             payload,
         )
 
-    for filename, payload in check_part_binary_files.items():
+    for filename_fmt, payload in check_part_binary_files.items():
         if not payload:
             continue
+
+        filename = filename_fmt.format(message_name=message_name)
 
         assert_file_has_content(
             os.path.join(message_save_dir, filename),
@@ -136,14 +144,13 @@ def do_test_message_saver(
 def test_simple_text_body_no_atts(temp_save_dir):
     message = create_message(template="simple_text_only")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     do_test_message_saver(
         temp_save_dir=temp_save_dir,
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.txt": "\n".join(
+            "{message_name}.txt": "\n".join(
                 [
                     get_header_preamble(message),
                     message_parts[1].get_payload(decode=True).decode("utf-8"),
@@ -156,7 +163,6 @@ def test_simple_text_body_no_atts(temp_save_dir):
 def test_simple_text_body_no_atts_with_save_eml_rule(temp_save_dir):
     message = create_message(template="simple_text_only")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -171,7 +177,7 @@ def test_simple_text_body_no_atts_with_save_eml_rule(temp_save_dir):
         message=message,
         check_eml_file=True,
         check_part_files={
-            f"{message_name}.txt": "\n".join(
+            "{message_name}.txt": "\n".join(
                 [
                     get_header_preamble(message),
                     message_parts[1].get_payload(decode=True).decode("utf-8"),
@@ -184,8 +190,6 @@ def test_simple_text_body_no_atts_with_save_eml_rule(temp_save_dir):
 
 def test_simple_text_body_no_atts_with_save_eml_rule_and_no_save_body(temp_save_dir):
     message = create_message(template="simple_text_only")
-    message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -208,14 +212,13 @@ def test_simple_text_body_no_atts_with_save_eml_rule_and_no_save_body(temp_save_
 def test_html_body_ics_att(temp_save_dir):
     message = create_message(template="text_html_with_calendar_attachment")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     do_test_message_saver(
         temp_save_dir=temp_save_dir,
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.html": "\n".join(
+            "{message_name}.html": "\n".join(
                 [
                     get_header_preamble(message, html=True),
                     message_parts[3].get_payload(decode=True).decode("utf-8"),
@@ -229,14 +232,13 @@ def test_html_body_ics_att(temp_save_dir):
 def test_html_body_ics_with_default_settings(temp_save_dir):
     message = create_message(template="text_html_with_calendar_attachment")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     do_test_message_saver(
         temp_save_dir=temp_save_dir,
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.html": "\n".join(
+            "{message_name}.html": "\n".join(
                 [
                     get_header_preamble(message, html=True),
                     message_parts[3].get_payload(decode=True).decode("utf-8"),
@@ -258,14 +260,13 @@ def test_html_body_ics_with_default_settings(temp_save_dir):
 def test_html_body_ics_with_default_settings_2(temp_save_dir):
     message = create_message(template="text_html_with_calendar_attachment")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     do_test_message_saver(
         temp_save_dir=temp_save_dir,
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.html": "\n".join(
+            "{message_name}.html": "\n".join(
                 [
                     get_header_preamble(message, html=True),
                     message_parts[3].get_payload(decode=True).decode("utf-8"),
@@ -290,7 +291,6 @@ def test_html_body_ics_att_with_html_pdf_transform(temp_save_dir):
     html_pdf_transform_command = "prince $in -o $out"
     message = create_message(template="text_html_with_calendar_attachment")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -306,7 +306,7 @@ def test_html_body_ics_att_with_html_pdf_transform(temp_save_dir):
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.pdf": None,  ## None means don't check content
+            "{message_name}.pdf": None,  ## None means don't check content
             "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
         },
         rule_settings=rule_settings,
@@ -316,7 +316,6 @@ def test_html_body_ics_att_with_html_pdf_transform(temp_save_dir):
 def test_html_body_ics_att_no_save_body(temp_save_dir):
     message = create_message(template="text_html_with_calendar_attachment")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -342,7 +341,6 @@ def test_html_body_ics_att_with_html_pdf_transform_no_save_body(temp_save_dir):
     html_pdf_transform_command = "prince $in -o $out"
     message = create_message(template="text_html_with_calendar_attachment")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -368,7 +366,6 @@ def test_html_body_ics_att_with_html_pdf_transform_no_save_body(temp_save_dir):
 def test_html_body_attachments_glob(temp_save_dir):
     message = create_message(template="text_html_with_multiple_large_attachments")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -384,7 +381,7 @@ def test_html_body_attachments_glob(temp_save_dir):
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.html": "\n".join(
+            "{message_name}.html": "\n".join(
                 [
                     get_header_preamble(message, html=True),
                     message_parts[3].get_payload(decode=True).decode("utf-8"),
@@ -401,7 +398,6 @@ def test_html_body_attachments_glob(temp_save_dir):
 def test_html_body_attachments_glob_2(temp_save_dir):
     message = create_message(template="text_html_with_multiple_large_attachments")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -417,7 +413,7 @@ def test_html_body_attachments_glob_2(temp_save_dir):
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.html": "\n".join(
+            "{message_name}.html": "\n".join(
                 [
                     get_header_preamble(message, html=True),
                     message_parts[3].get_payload(decode=True).decode("utf-8"),
@@ -434,7 +430,6 @@ def test_html_body_attachments_glob_2(temp_save_dir):
 def test_html_body_attachments_null_should_match_no_attachments(temp_save_dir):
     message = create_message(template="text_html_with_multiple_large_attachments")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -450,7 +445,7 @@ def test_html_body_attachments_null_should_match_no_attachments(temp_save_dir):
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.html": "\n".join(
+            "{message_name}.html": "\n".join(
                 [
                     get_header_preamble(message, html=True),
                     message_parts[3].get_payload(decode=True).decode("utf-8"),
@@ -464,7 +459,6 @@ def test_html_body_attachments_null_should_match_no_attachments(temp_save_dir):
 def test_flatten_single_file_messages_for_attachment(temp_save_dir):
     message = create_message(template="text_html_with_multiple_large_attachments")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -482,7 +476,7 @@ def test_flatten_single_file_messages_for_attachment(temp_save_dir):
         message=message,
         check_eml_file=False,
         check_part_binary_files={
-            f"{message_name}.JPG": message_parts[6].get_payload(decode=True),
+            "{message_name}.JPG": message_parts[6].get_payload(decode=True),
         },
         rule_settings=rule_settings,
         files_in_temp_save_dir=True,
@@ -492,7 +486,6 @@ def test_flatten_single_file_messages_for_attachment(temp_save_dir):
 def test_flatten_single_file_messages_for_body(temp_save_dir):
     message = create_message(template="text_html_with_multiple_large_attachments")
     message_parts = list(message.walk())
-    message_name = get_message_name(message)
 
     rule_settings = RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
@@ -510,7 +503,40 @@ def test_flatten_single_file_messages_for_body(temp_save_dir):
         message=message,
         check_eml_file=False,
         check_part_files={
-            f"{message_name}.html": "\n".join(
+            "{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+        },
+        rule_settings=rule_settings,
+        files_in_temp_save_dir=True,
+    )
+
+
+def test_flatten_single_file_messages_for_body_custom_message_name(temp_save_dir):
+    message = create_message(template="text_html_with_multiple_large_attachments")
+    message_parts = list(message.walk())
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            save_attachments=None,
+            flatten_single_file_messages=True,
+            save_body=True,
+            message_name="foo-bar {date}",
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            "{message_name}.html": "\n".join(
                 [
                     get_header_preamble(message, html=True),
                     message_parts[3].get_payload(decode=True).decode("utf-8"),

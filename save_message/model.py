@@ -111,6 +111,13 @@ class RuleSaveSettings(BaseModel):
     # rather than in a directory for the message
     flatten_single_file_messages: bool = False
 
+    # How to name the message. This sets the name of the directory the
+    # message's files are saved in, and the name of body-part files. If
+    # flattening is enabled, this determines the name of the single file.
+    # Available fields are {from_name}, {from_addr}, {to_name}, {to_addr},
+    #   {subject}, {month_year}, {date} (day, month, year)
+    message_name: str = "{from_name} {subject} {month_year}"
+
 
 class RuleSettings(BaseModel):
     # action to take for matching messages
