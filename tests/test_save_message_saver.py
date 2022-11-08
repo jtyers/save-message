@@ -395,6 +395,39 @@ def test_html_body_attachments_glob(temp_save_dir):
     )
 
 
+def test_html_body_attachments_glob_custom_message_name(temp_save_dir):
+    message = create_message(template="text_html_with_multiple_large_attachments")
+    message_parts = list(message.walk())
+
+    rule_settings = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path=temp_save_dir,
+            save_eml=False,
+            save_attachments="IMG_7806*",
+            message_name="{from_addr} {subject}",
+        ),
+    )
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            "{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+        },
+        check_part_binary_files={
+            "IMG_7806 1 .JPG": message_parts[4].get_payload(decode=True),
+        },
+        rule_settings=rule_settings,
+    )
+
+
 def test_html_body_attachments_glob_2(temp_save_dir):
     message = create_message(template="text_html_with_multiple_large_attachments")
     message_parts = list(message.walk())
