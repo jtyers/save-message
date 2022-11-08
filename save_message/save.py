@@ -17,6 +17,7 @@ import tempfile
 from save_message.rules import RulesMatcher
 from save_message.model import Config
 from save_message.model import SaveRule
+from save_message.model import merge_models
 
 logger = logging.getLogger(__name__)
 
@@ -180,11 +181,14 @@ class MessageSaver:
     def save_message(self, msg: EmailMessage, rule: SaveRule):
         """Save the message in `input_file`, using rules to determine
         where to save. The rule is the rule whose actions should
-        be applied.
+        be applied; default_settings.save_settings are also taken  (from
+        Config) into account.
 
         """
         message_name = get_message_name(msg)
-        save_settings = rule.settings.save_settings
+        save_settings = merge_models(
+            self.config.default_settings.save_settings, rule.settings.save_settings
+        )
 
         dest_dir = os.path.join(save_settings.path, message_name)
         dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))

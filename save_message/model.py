@@ -9,6 +9,60 @@ from typing import List
 from pydantic import BaseModel
 
 
+# https://stackoverflow.com/a/7205107
+def deep_merge_dicts(a, b, path=None):
+    """Deep-merge two dicts together. b will be merged into a, thus keys
+    in b take precedence, and a will be mutated. a is also returned."""
+    if path is None:
+        path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                deep_merge_dicts(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass  # same leaf value
+            else:
+                a[key] = b[key]
+        else:
+            a[key] = b[key]
+    return a
+
+
+def merge_models(*args):
+    """Merge multiple instances of the same type together. Intended to work
+    for any list of Pydantic-modelled instances.
+
+    Properties set in the last-specified instance will take
+    precedence. This function uses pydantic's __fields_set__
+    to determine the values of fields for each instance."""
+
+    for arg in args:
+        assert hasattr(arg, "__fields_set__")
+
+    first = args[0]
+    first_dict = dict(first)
+    new_type = type(first)
+    new_props = dict(first)
+
+    if len(args) > 1:
+        for arg in args[1:]:
+            assert type(arg) == new_type
+            arg_dict = dict(arg)
+
+            for field in arg.__fields_set__:
+                # for this field, merge it with the current value
+                # in new_props, or first's value if not present
+                cur = new_props.get(field, first_dict.get(field))
+
+                if hasattr(cur, "__fields_set__"):
+                    new_props[field] = merge_models(cur, arg_dict[field])
+
+                else:
+                    new_props[field] = getattr(arg, field)
+
+    return first.copy(update=new_props)
+
+
 def match_field(match_rule: str, value: str) -> bool:
     """Find an individual value against a filter. Handles glob or regex filters."""
     if match_rule[0] == "/" and match_rule[-1] == "/":

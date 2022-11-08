@@ -39,6 +39,7 @@ def do_test_message_saver(
     check_part_binary_files: dict = {},
     rule_settings: RuleSettings = None,
     files_in_temp_save_dir: bool = False,
+    default_settings: RuleSettings = None,
 ):
     """Run the test to save the given message, then verify the .eml file
     is present and correct, then verify particular payload files have
@@ -60,7 +61,7 @@ def do_test_message_saver(
     message_part_saver = MessagePartSaver(config=Config)
 
     config = MagicMock(spec=Config)
-    default_settings = RuleSettings(
+    default_settings = default_settings or RuleSettings(
         action=MessageAction.SAVE_AND_DELETE,
         save_settings=RuleSaveSettings(path=temp_save_dir),
     )
@@ -222,6 +223,66 @@ def test_html_body_ics_att(temp_save_dir):
             ),
             "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
         },
+    )
+
+
+def test_html_body_ics_with_default_settings(temp_save_dir):
+    message = create_message(template="text_html_with_calendar_attachment")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            f"{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+            "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
+        },
+        default_settings=RuleSettings(
+            action=MessageAction.SAVE_AND_DELETE,
+            save_settings=RuleSaveSettings(path=temp_save_dir, save_eml=True),
+        ),
+        rule_settings=RuleSettings(
+            action=MessageAction.SAVE_AND_DELETE,
+            save_settings=RuleSaveSettings(path=temp_save_dir, save_eml=False),
+        ),
+    )
+
+
+def test_html_body_ics_with_default_settings_2(temp_save_dir):
+    message = create_message(template="text_html_with_calendar_attachment")
+    message_parts = list(message.walk())
+    message_name = get_message_name(message)
+
+    do_test_message_saver(
+        temp_save_dir=temp_save_dir,
+        message=message,
+        check_eml_file=False,
+        check_part_files={
+            f"{message_name}.html": "\n".join(
+                [
+                    get_header_preamble(message, html=True),
+                    message_parts[3].get_payload(decode=True).decode("utf-8"),
+                ]
+            ),
+            "invite.ics": message_parts[5].get_payload(decode=True).decode("utf-8"),
+        },
+        default_settings=RuleSettings(
+            action=MessageAction.SAVE_AND_DELETE,
+            save_settings=RuleSaveSettings(
+                path=temp_save_dir, save_attachments="*.txt"
+            ),
+        ),
+        rule_settings=RuleSettings(
+            action=MessageAction.SAVE_AND_DELETE,
+            save_settings=RuleSaveSettings(path=temp_save_dir, save_attachments="*"),
+        ),
     )
 
 

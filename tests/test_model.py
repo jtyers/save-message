@@ -5,6 +5,7 @@ from save_message.model import MessageAction
 from save_message.model import RuleSettings
 from save_message.model import RuleSaveSettings
 from save_message.model import SaveRule
+from save_message.model import merge_models
 
 settings = RuleSettings(
     action=MessageAction.SAVE_AND_DELETE, save_settings=RuleSaveSettings(path="/")
@@ -41,3 +42,33 @@ def test_save_rule_matches_regex_subject_fail():
     rule = SaveRule(match_subject="/^my .+z$/", settings=settings)
 
     assert not rule.matches(msg)
+
+
+def test_rule_settings_merge():
+    settings_0 = RuleSettings(action=MessageAction.IGNORE)
+
+    settings_1 = RuleSettings(
+        action=MessageAction.KEEP,
+        save_settings=RuleSaveSettings(
+            path="/", save_body=False, save_attachments="*.jpg"
+        ),
+    )
+
+    settings_2 = RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(path="/2", save_eml=True),
+    )
+
+    assert merge_models(settings_0) == settings_0
+    assert merge_models(settings_0, settings_1) == RuleSettings(
+        action=MessageAction.KEEP,
+        save_settings=RuleSaveSettings(
+            path="/", save_body=False, save_attachments="*.jpg"
+        ),
+    )
+    assert merge_models(settings_1, settings_2) == RuleSettings(
+        action=MessageAction.SAVE_AND_DELETE,
+        save_settings=RuleSaveSettings(
+            path="/2", save_body=False, save_eml=True, save_attachments="*.jpg"
+        ),
+    )
