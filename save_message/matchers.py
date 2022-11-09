@@ -168,7 +168,7 @@ class OrMatcher(Matcher):
         )
 
 
-def save_rule_to_matcher(rule_matches: list[RuleMatch]) -> Matcher:
+def rule_matches_to_matcher(rule_matches: list[RuleMatch]) -> Matcher:
     """Creates a matcher that matches on the rules given in the
     list of RuleMatches. Each RuleMatch is treated as an OR, and
     the attributes in each RuleMatch are ANDed together."""

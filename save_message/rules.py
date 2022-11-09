@@ -10,7 +10,7 @@ import ruamel.yaml
 
 from save_message.config import Config
 from save_message.config import DEFAULT_SAVE_TO
-from save_message.matchers import save_rule_to_matcher
+from save_message.matchers import rule_matches_to_matcher
 from save_message.model import MessageAction
 from save_message.model import RuleSaveSettings
 from save_message.model import RuleSettings
@@ -25,9 +25,7 @@ class RulesMatcher:
     def __init__(self, config: Config):
         self.config = config
 
-    def match_save_rule_or_prompt(
-        self, msg: EmailMessage, prompt_save_dir_command: str = None
-    ) -> SaveRule:
+    def match_save_rule(self, msg: EmailMessage) -> SaveRule:
         """Find the first save_rule in the config that matches the given
         message. If prompt_save_dir_command is given, we instead generate
         a new (otherwise blank) SaveRule with the save_dir set to the
@@ -64,7 +62,7 @@ class RulesMatcher:
         #             )
         #
         for save_rule in self.config.save_rules:
-            save_rule_matcher = save_rule_to_matcher(save_rule)
+            save_rule_matcher = rule_matches_to_matcher(save_rule.matches)
             if save_rule_matcher.matches(msg):
                 return save_rule
 

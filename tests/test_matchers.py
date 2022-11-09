@@ -13,7 +13,7 @@ from save_message.matchers import FromMatcher
 from save_message.matchers import DateMatcher
 from save_message.matchers import ToMatcher
 from save_message.matchers import Matcher
-from save_message.matchers import save_rule_to_matcher
+from save_message.matchers import rule_matches_to_matcher
 from save_message.model import RuleMatch
 
 
@@ -65,15 +65,15 @@ def test_to_address_regex():
     )
 
 
-def do_save_rule_to_matcher_test(
+def do_rule_matches_to_matcher(
     temp_save_dir, expected: Matcher, rule_matches: list[RuleMatch]
 ):
-    result = save_rule_to_matcher(rule_matches)
+    result = rule_matches_to_matcher(rule_matches)
     assert result == expected
 
 
 def test_subject_save_rule(temp_save_dir):
-    do_save_rule_to_matcher_test(
+    do_rule_matches_to_matcher(
         temp_save_dir,
         rule_matches=[
             RuleMatch(subject="Foo*"),
@@ -87,7 +87,7 @@ def test_subject_save_rule(temp_save_dir):
 def test_all_fields_save_rule(temp_save_dir):
     now = datetime.now()
 
-    do_save_rule_to_matcher_test(
+    do_rule_matches_to_matcher(
         temp_save_dir,
         rule_matches=[
             RuleMatch(

@@ -24,62 +24,59 @@ def new_non_matching_matcher():
     return r
 
 
-def do_match_save_rule_or_prompt_test(
-    mock_save_rule_to_matcher,
-    save_rule_matchers,
-    expected_save_rule,
+def do_match_save_rule_test(
+    mock_rule_matches_to_matcher,
+    rule_matchers_result,
     default_settings=None,
+    expected_save_rule=None,
 ):
     config = MagicMock(spec=Config)
-    config.save_rules = [sr for sr in save_rule_matchers.keys()]
+    save_rule = sr()
+    config.save_rules = [save_rule]
 
     if default_settings:
         config.default_settings = default_settings
 
-    mock_save_rule_to_matcher.side_effect = lambda sr: save_rule_matchers[sr]
+    mock_rule_matches_to_matcher.return_value = rule_matchers_result
 
     msg = create_message(template="simple_text_only")
-
     rules_matcher = RulesMatcher(config)
-    result = rules_matcher.match_save_rule_or_prompt(msg)
+    result = rules_matcher.match_save_rule(msg)
 
-    assert result == expected_save_rule
+    assert result == (expected_save_rule or save_rule)
 
 
-@patch("save_message.rules.save_rule_to_matcher")
-def test_match(mock_save_rule_to_matcher):
-    sr_data = {
-        MagicMock(spec=SaveRule): OrMatcher(
+def sr():
+    return SaveRule.construct(matches=[])
+
+
+@patch("save_message.rules.rule_matches_to_matcher")
+def test_match(mock_rule_matches_to_matcher):
+    do_match_save_rule_test(
+        mock_rule_matches_to_matcher,
+        OrMatcher(
             [
                 new_matching_matcher(),
                 new_non_matching_matcher(),
                 new_non_matching_matcher(),
             ]
         ),
-    }
-    do_match_save_rule_or_prompt_test(
-        mock_save_rule_to_matcher,
-        sr_data,
-        expected_save_rule=list(sr_data.keys())[0],
     )
 
 
-@patch("save_message.rules.save_rule_to_matcher")
+@patch("save_message.rules.rule_matches_to_matcher")
 def test_no_match_returns_default_settings(
-    mock_save_rule_to_matcher,
+    mock_rule_matches_to_matcher,
 ):
     default_settings = MagicMock(spec=RuleSettings)
-    sr_data = {
-        MagicMock(spec=SaveRule): OrMatcher(
+    do_match_save_rule_test(
+        mock_rule_matches_to_matcher,
+        OrMatcher(
             [
                 new_non_matching_matcher(),
                 new_non_matching_matcher(),
             ]
         ),
-    }
-    do_match_save_rule_or_prompt_test(
-        mock_save_rule_to_matcher,
-        sr_data,
         default_settings=default_settings,
         expected_save_rule=SaveRule(settings=default_settings, matches=[]),
     )
