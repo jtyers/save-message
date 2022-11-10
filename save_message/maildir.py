@@ -57,7 +57,7 @@ class Maildir:
         msg = self.get(key)
         email_msg = message_from_string(str(msg), policy=default)
 
-        rule = self.rules_matcher.match_save_rule_or_prompt(msg)
+        rule = self.rules_matcher.match_save_rule(msg)
 
         logger.info("matching rule for key %s: %s", key, rule)
 

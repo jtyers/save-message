@@ -104,7 +104,7 @@ def do_apply_rules_test(
     message_from_string.return_value = email_message
 
     maildir_.maildir.get.return_value = message
-    maildir_.rules_matcher.match_save_rule_or_prompt.return_value = rule
+    maildir_.rules_matcher.match_save_rule.return_value = rule
 
     maildir_.delete = MagicMock()
 
