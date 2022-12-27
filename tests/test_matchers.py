@@ -27,6 +27,7 @@ def temp_save_dir() -> str:
 
 def do_or_matcher_test(expected: bool, matchers: list[Matcher], **msg_args):
     msg = create_message(template="simple_text_only", **msg_args)
+    print(msg)
 
     matcher_set = OrMatcher(matchers=matchers)
 
@@ -38,6 +39,33 @@ def test_subject():
         subject="Foo bar",
         matchers=[SubjectMatcher(match_subject="Foo *r")],
         expected=True,
+    )
+
+
+def test_subject_with_newline():
+    # we test this cuz AWS emails seem to include it
+    do_or_matcher_test(
+        subject="Foo bar\nbaz",
+        matchers=[SubjectMatcher(match_subject="Foo *r")],
+        expected=True,
+    )
+
+
+def test_subject_with_square_brackets():
+    # we test this cuz AWS emails seem to include it
+    do_or_matcher_test(
+        subject="Foo [bar]",
+        matchers=[SubjectMatcher(match_subject="Foo [bar]")],
+        expected=True,
+    )
+
+
+def test_subject_with_newline_does_not_match_after_newline():
+    # we test this cuz AWS emails seem to include it
+    do_or_matcher_test(
+        subject="Foo bar\nbaz",
+        matchers=[SubjectMatcher(match_subject="Foo *baz")],
+        expected=False,
     )
 
 

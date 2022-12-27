@@ -4,9 +4,19 @@ from email.header import Header
 from email.utils import parseaddr
 import fnmatch
 from mailbox import MaildirMessage
+import pudb
 import re
+import sys
 
 from save_message.model import RuleMatch
+
+
+def replace_all_items(s: str, replacements: dict) -> str:
+    if replacements:
+        for k, v in replacements.items():
+            s = s.replace(k, v)
+
+    return s
 
 
 class Matcher:
@@ -15,34 +25,69 @@ class Matcher:
 
 
 class WildcardMatcher(Matcher):
-    def __init__(self, match_criteria):
+    def __init__(self, match_criteria: str, replacements: dict = {}):
+        """
+        Create a WildcardMatcher.
+
+        match_criteria should be the criteria specified to match, as a string.
+        It can either be an exact match, a glob or a regex (must be enclosed
+        in forward slashes).
+
+        replacements, if specified, are a dict of replacements to perform
+        on subject lines before matching.
+        """
         # general approach is to cache as much as possible here, so
         # matching is fast, as a single matcher may be tested against
         # many hundreds of messages
+
         self.match_criteria = match_criteria
         self.is_regex = self.match_criteria[0] == "/" and self.match_criteria[-1] == "/"
-        self.pattern = (
-            re.compile(self.match_criteria[1:-1])
-            if self.is_regex
-            else re.compile(fnmatch.translate(self.match_criteria))
-        )
+
+        if self.is_regex:
+            self.pattern = re.compile(self.match_criteria[1:-1])
+
+        else:
+            # convert the fnmatch expression into a regex;
+            self.pattern = re.compile(
+                replace_all_items(
+                    re.escape(self.match_criteria),
+                    {
+                        "\\*": ".+",
+                        "\\?": ".",
+                    },
+                )
+            )
+
+        self.replacements = replacements
 
     def __repr__(self):
         return f"WildcardMatcher(match_criteria={self.match_criteria})"
 
     def __matches_value__(self, value: str) -> bool:
+        # if "Foo [bar]" in self.match_criteria and "Foo [bar]" in value:
+        #    pudb.set_trace()
+
         if value is None:
             return False
 
         if type(value) is Header:
             value = str(value)
 
+        if self.replacements:
+            for k, v in self.replacements.items():
+                value = re.sub(k, v, value)
+
         return self.pattern.match(value) is not None
 
 
 class SubjectMatcher(WildcardMatcher):
     def __init__(self, match_subject):
-        super().__init__(match_subject)
+        super().__init__(
+            match_subject,
+            replacements={
+                "\n.*": "",  # strip newlines
+            },
+        )
 
     def __repr__(self):
         return f"SubjectMatcher(to={self.match_criteria})"

@@ -59,7 +59,7 @@ class Maildir:
 
         rule = self.rules_matcher.match_save_rule(msg)
 
-        logger.info("matching rule for key %s: %s", key, rule)
+        logger.info("apply_rules: %s matches %s", key, rule)
 
         if rule.settings.action == MessageAction.KEEP:
             self.message_saver.save_message(email_msg, rule)

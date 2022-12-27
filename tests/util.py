@@ -1,6 +1,7 @@
 import email
 from email.message import EmailMessage
 import os
+import quopri
 import subprocess
 
 from save_message.config import load_config
@@ -20,6 +21,10 @@ def assert_file_has_content(filename, content, binary=False):
 
     if not p.stdout == "":
         raise AssertionError(f"file {os.path.basename(filename)} differs:\n{p.stdout}")
+
+
+def quote(s):
+    return quopri.encodestring(s.encode("utf-8"), quotetabs=True)
 
 
 def create_message_string(

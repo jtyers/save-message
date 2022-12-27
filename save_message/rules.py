@@ -2,7 +2,6 @@ from email.message import EmailMessage
 import email.policy
 import logging
 import os
-import shlex
 import subprocess
 import sys
 
@@ -11,9 +10,6 @@ import ruamel.yaml
 from save_message.config import Config
 from save_message.config import DEFAULT_SAVE_TO
 from save_message.matchers import rule_matches_to_matcher
-from save_message.model import MessageAction
-from save_message.model import RuleSaveSettings
-from save_message.model import RuleSettings
 from save_message.model import SaveRule
 
 logger = logging.getLogger(__name__)
