@@ -59,19 +59,25 @@ class Maildir:
 
         rule = self.rules_matcher.match_save_rule(msg)
 
-        logger.info("apply_rules: %s matches %s", key, rule)
-
         if rule.settings.action == MessageAction.KEEP:
+            logger.debug("apply_rules: %s matches %s", key, rule.matches)
+
             self.message_saver.save_message(email_msg, rule)
 
         elif rule.settings.action == MessageAction.IGNORE:
+            # logger.debug("apply_rules: %s matches %s", key, rule)
+
             pass  # do nothing
 
         elif rule.settings.action == MessageAction.SAVE_AND_DELETE:
+            logger.debug("apply_rules: %s matches %s", key, rule.matches)
+
             self.message_saver.save_message(email_msg, rule)
             self.delete(key)
 
         elif rule.settings.action == MessageAction.DELETE:
+            logger.debug("apply_rules: %s matches %s", key, rule.matches)
+
             self.delete(key)
 
         else:
