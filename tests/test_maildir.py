@@ -4,8 +4,6 @@ from unittest.mock import patch
 
 from .context import save_message  # noqa: F401
 
-from email.policy import default
-
 from save_message.model import MessageAction
 from save_message.model import RuleSettings
 from save_message.model import SaveRule
@@ -128,6 +126,7 @@ def test_apply_rules_with_keep_action(maildir_):
     rule = MagicMock(spec=SaveRule)
     rule.settings = MagicMock(spec=RuleSettings)
     rule.settings.action = MessageAction.KEEP
+    rule.matches = MagicMock()
 
     do_apply_rules_test(
         maildir_=maildir_, rule=rule, should_delete=False, should_save=True
