@@ -209,6 +209,7 @@ class MessageSaver:
             self.config.default_settings.save_settings, rule.settings.save_settings
         )
         message_name = get_message_name(msg, fmt=save_settings.message_name)
+        logger.debug("save_settings=%s", save_settings)
 
         dest_dir = os.path.join(save_settings.path, message_name)
         dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))

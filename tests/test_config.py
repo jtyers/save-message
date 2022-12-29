@@ -1,4 +1,3 @@
-import os
 import pytest
 import shutil
 import tempfile
@@ -10,6 +9,7 @@ from save_message.model import ConfigMaildir
 from save_message.model import MessageAction
 from save_message.model import RuleMatch
 from save_message.model import RuleSettings
+from save_message.model import RuleSaveSettings
 from save_message.model import SaveRule
 
 
@@ -25,7 +25,10 @@ def test_config(temp_save_dir):
     config = load_config_from_string(
         temp_save_dir,
         """
-        default_save_to: /foo/bar
+        default_settings:
+            save_settings:
+                path: /foo/bar
+            action: IGNORE
 
         maildir:
             path: /mail
@@ -33,46 +36,51 @@ def test_config(temp_save_dir):
         save_rules:
             - matches:
               - subject: Foo*
-                from_addr: bar*@example.com
+                from_: bar*@example.com
               settings:
                 action: KEEP
 
             - matches:
-              - to_name: Me
-              - from_addr: bar*@example.com
+              - to: Me
+              - from_: bar*@example.com
               settings:
                 action: SAVE_AND_DELETE
 
             - matches:
               - subject: Bat*
-                from_name: bar*@example.com
+                from_: bar*@example.com
               settings:
                 action: IGNORE
                 
             - matches:
               - subject: Bam*
-                from_addr: bar*@example.com
+                from_: bar*@example.com
               settings:
                 action: DELETE
     """,
     )
     assert config == Config(
         maildir=ConfigMaildir(path="/mail"),
-        default_save_to="/foo/bar",
+        default_settings=RuleSettings(
+            save_settings=RuleSaveSettings(
+                path="/foo/bar",
+            ),
+            action=MessageAction.IGNORE,
+        ),
         save_rules=[
             SaveRule(
                 matches=[
                     RuleMatch(
                         subject="Foo*",
-                        from_addr="bar*@example.com",
+                        from_="bar*@example.com",
                     )
                 ],
                 settings=RuleSettings(action=MessageAction.KEEP),
             ),
             SaveRule(
                 matches=[
-                    RuleMatch(to_name="Me"),
-                    RuleMatch(from_addr="bar*@example.com"),
+                    RuleMatch(to="Me"),
+                    RuleMatch(from_="bar*@example.com"),
                 ],
                 settings=RuleSettings(action=MessageAction.SAVE_AND_DELETE),
             ),
@@ -80,7 +88,7 @@ def test_config(temp_save_dir):
                 matches=[
                     RuleMatch(
                         subject="Bat*",
-                        from_name="bar*@example.com",
+                        from_="bar*@example.com",
                     )
                 ],
                 settings=RuleSettings(action=MessageAction.IGNORE),
@@ -89,7 +97,7 @@ def test_config(temp_save_dir):
                 matches=[
                     RuleMatch(
                         subject="Bam*",
-                        from_addr="bar*@example.com",
+                        from_="bar*@example.com",
                     )
                 ],
                 settings=RuleSettings(action=MessageAction.DELETE),

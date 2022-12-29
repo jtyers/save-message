@@ -27,7 +27,6 @@ def temp_save_dir() -> str:
 
 def do_or_matcher_test(expected: bool, matchers: list[Matcher], **msg_args):
     msg = create_message(template="simple_text_only", **msg_args)
-    print(msg)
 
     matcher_set = OrMatcher(matchers=matchers)
 

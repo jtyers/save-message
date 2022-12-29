@@ -2,11 +2,9 @@ import email
 from email.message import EmailMessage
 import os
 import pytest
-import shutil
 import tempfile
 
 from unittest.mock import MagicMock
-from unittest.mock import patch
 
 from .context import save_message  # noqa: F401
 from tests.util import assert_file_has_content

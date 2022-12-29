@@ -101,6 +101,9 @@ class MessageAction(str, Enum):
 
 
 class RuleSaveSettings(BaseModel):
+    class Config:
+        extra = "forbid"
+
     # The location to save the message to, which should be a folder. Environment
     # variables can be used here. The location must already exist.
     path: str = None
@@ -118,7 +121,7 @@ class RuleSaveSettings(BaseModel):
 
     # If set, this should be a command which reads an HTML file from the
     # path $in and writes a PDF to the path $out.
-    html_pdf_transform_command: str = None
+    html_pdf_transform_command: str | None = None
 
     # If set, where a message has just one file to save (after processing
     # save_body and save_attachments), save that file directly under 'path'
@@ -134,6 +137,9 @@ class RuleSaveSettings(BaseModel):
 
 
 class RuleSettings(BaseModel):
+    class Config:
+        extra = "forbid"
+
     # action to take for matching messages
     action: MessageAction
 
@@ -142,6 +148,9 @@ class RuleSettings(BaseModel):
 
 
 class RuleMatch(BaseModel):
+    class Config:
+        extra = "forbid"
+
     # match on the subject, from and to fields
     # Match values are treated as globs and passed to fnmatch, unless the
     # match value is enclosed in forward slashes, in which case it's treated
@@ -153,6 +162,9 @@ class RuleMatch(BaseModel):
 
 
 class SaveRule(BaseModel):
+    class Config:
+        extra = "forbid"
+
     # match on the subject, from and to fields
     # Match values are treated as globs and passed to fnmatch, unless the
     # match value is enclosed in forward slashes, in which case it's treated
@@ -200,14 +212,24 @@ class SaveRule(BaseModel):
 
 
 class ConfigBody(BaseModel):
-    convert_html_to_pdf: bool = False
+    class Config:
+        extra = "forbid"
+
+    # convert_html_to_pdf: bool = False
+    pass
 
 
 class ConfigMaildir(BaseModel):
+    class Config:
+        extra = "forbid"
+
     path: str
 
 
 class Config(BaseModel):
+    class Config:
+        extra = "forbid"
+
     default_settings: RuleSettings = None
 
     maildir: ConfigMaildir
