@@ -143,6 +143,10 @@ class RuleSettings(BaseModel):
     # action to take for matching messages
     action: MessageAction
 
+    # for DELETE and SAVE_AND_DELETE actions, whether to prompt the user
+    # before delete
+    delete_confirmation: bool = True
+
     # settings for saving (if action includes this)
     save_settings: RuleSaveSettings = None
 

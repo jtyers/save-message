@@ -1,6 +1,8 @@
 from argparse import Namespace
 from datetime import datetime
 from email import message_from_string
+from email.message import EmailMessage
+from email import message_from_binary_file
 from email.policy import default
 import logging
 import mailbox
@@ -17,6 +19,12 @@ from save_message.save import MessageSaver
 logger = logging.getLogger(__name__)
 
 
+def make_EmailMessage(f):
+    # https://stackoverflow.com/a/57550079/1432488
+    """Factory to create EmailMessage objects instead of MaildirMessage objects"""
+    return message_from_binary_file(f, policy=default)
+
+
 class Maildir:
     def __init__(
         self,
@@ -30,13 +38,15 @@ class Maildir:
         self.rules_matcher = rules_matcher
         self.message_saver = message_saver
 
-        self.maildir = mailbox.Maildir(dirname=config.maildir.path, create=False)
+        self.maildir = mailbox.Maildir(
+            dirname=config.maildir.path, create=False, factory=make_EmailMessage
+        )
 
-    def get(self, key):
+    def get(self, key: str):
         return self.maildir.get(key)
 
-    def delete(self, key):
-        if self.args.force_deletes:
+    def delete(self, key: str, force: bool = False):
+        if force or self.args.force_deletes:
             self.maildir.remove(key)
 
         else:
@@ -55,14 +65,15 @@ class Maildir:
 
     def apply_rules(self, key):
         msg = self.get(key)
-        email_msg = message_from_string(str(msg), policy=default)
+        # email_msg = message_from_string(str(msg), policy=default)
+        assert isinstance(msg, EmailMessage)
 
         rule = self.rules_matcher.match_save_rule(msg)
 
         if rule.settings.action == MessageAction.KEEP:
             logger.debug("apply_rules: %s matches %s", key, rule.matches)
 
-            self.message_saver.save_message(email_msg, rule)
+            self.message_saver.save_message(msg, rule)
 
         elif rule.settings.action == MessageAction.IGNORE:
             # logger.debug("apply_rules: %s matches %s", key, rule)
@@ -72,13 +83,13 @@ class Maildir:
         elif rule.settings.action == MessageAction.SAVE_AND_DELETE:
             logger.debug("apply_rules: %s matches %s", key, rule.matches)
 
-            self.message_saver.save_message(email_msg, rule)
-            self.delete(key)
+            self.message_saver.save_message(msg, rule)
+            self.delete(key, force=not rule.settings.delete_confirmation)
 
         elif rule.settings.action == MessageAction.DELETE:
             logger.debug("apply_rules: %s matches %s", key, rule.matches)
 
-            self.delete(key)
+            self.delete(key, force=not rule.settings.delete_confirmation)
 
         else:
             raise ValueError(f"unhandled MessageAction {rule.action}")

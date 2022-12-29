@@ -32,9 +32,10 @@ def maildir_(md):
 def do_delete_test(
     input_: MagicMock,
     maildir_,
-    force_deletes: bool,
     input_response: str,
     should_delete: bool,
+    force_deletes: bool = False,
+    force: bool = False,
 ):
     key = "key-123456abc"
     message = {
@@ -48,9 +49,9 @@ def do_delete_test(
 
     input_.return_value = input_response
 
-    maildir_.delete(key)
+    maildir_.delete(key, force=force)
 
-    if not force_deletes:
+    if not (force or force_deletes):
         # get() only called when we ask user for input
         maildir_.maildir.get.assert_called_with(key)
 
@@ -62,19 +63,35 @@ def do_delete_test(
 
 def test_delete_with_prompt(maildir_):
     do_delete_test(
-        maildir_=maildir_, force_deletes=False, input_response="YES", should_delete=True
+        maildir_=maildir_,
+        input_response="YES",
+        should_delete=True,
     )
 
 
 def test_delete_with_prompt_cancelling(maildir_):
     do_delete_test(
-        maildir_=maildir_, force_deletes=False, input_response="no", should_delete=False
+        maildir_=maildir_,
+        input_response="no",
+        should_delete=False,
     )
 
 
 def test_delete_with_force_deletes(maildir_):
     do_delete_test(
-        maildir_=maildir_, force_deletes=True, input_response=None, should_delete=True
+        maildir_=maildir_,
+        force_deletes=True,
+        input_response=None,
+        should_delete=True,
+    )
+
+
+def test_delete_with_force(maildir_):
+    do_delete_test(
+        maildir_=maildir_,
+        force=True,
+        input_response=None,
+        should_delete=True,
     )
 
 
