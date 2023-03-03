@@ -170,13 +170,7 @@ class SaveRule(BaseModel):
     class Config:
         extra = "forbid"
 
-    # match on the subject, from and to fields
-    # Match values are treated as globs and passed to fnmatch, unless the
-    # match value is enclosed in forward slashes, in which case it's treated
-    # as a regex.
-    match_subject: str = None
-    match_from: str = None
-    match_to: str = None
+    id: str | None = None
 
     matches: list[RuleMatch]
 

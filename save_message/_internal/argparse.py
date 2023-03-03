@@ -59,4 +59,8 @@ def create_parser():
     )
     do_apply_rules.set_defaults(func=cli_do.do_apply_rules)
 
+    do_test_rule = subparsers.add_parser("test-rule", help="Test a rule's matchers")
+    do_test_rule.add_argument("--id", help="Rule ID to test")
+    do_test_rule.set_defaults(func=cli_do.do_test_rule)
+
     return parser
