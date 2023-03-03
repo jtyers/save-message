@@ -23,6 +23,12 @@ from save_message.model import merge_models
 logger = logging.getLogger(__name__)
 
 
+class MessageSaveException(Exception):
+    # use 'raise MessageSaveException(...) from ex' to embed the cause
+    def __init__(self, message_name):
+        self.message_name = message_name
+
+
 def get_header_preamble(message: EmailMessage, html: bool = False) -> str:
     if html:
         lines = [
@@ -211,115 +217,131 @@ class MessageSaver:
         message_name = get_message_name(msg, fmt=merged_save_settings.message_name)
         logger.debug("merged_save_settings=%s", merged_save_settings)
 
-        dest_dir = os.path.join(merged_save_settings.path, message_name)
-        dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
+        try:
+            dest_dir = os.path.join(merged_save_settings.path, message_name)
+            dest_dir = os.path.expanduser(os.path.expandvars(dest_dir))
 
-        logger.info("dest_dir=%s", dest_dir)
-        os.makedirs(dest_dir, exist_ok=False)
+            if os.path.exists(dest_dir):
+                # to deal with scenarios where we already saved a message, or
+                # it has a collision, just construct a name that does not exist,
+                # as the objective is to save the message and be assured it is
+                # saved, even if we suffer duplicates
+                orig_dest_dir = dest_dir
+                counter = 0
 
-        counter = 1
+                while os.path.exists(dest_dir):
+                    counter += 1
+                    dest_dir = f"{orig_dest_dir}_{counter}"
 
-        if merged_save_settings.save_body:
-            logger.debug("saving message body")
-            # First collate the 'body parts', i.e. non-attachments, which
-            # make up the body of the messge. We aim to save only one of
-            # these
-            body_parts = {
-                x.get_content_type(): x
-                for x in filter(lambda x: not x.is_attachment(), msg.walk())
-            }
+            logger.info("dest_dir=%s", dest_dir)
+            os.makedirs(dest_dir, exist_ok=False)
 
-            saved = False
-            for preferred_content_type in ["text/html", "text/plain"]:
-                if preferred_content_type in body_parts.keys():
+            counter = 1
+
+            if merged_save_settings.save_body:
+                logger.debug("saving message body")
+                # First collate the 'body parts', i.e. non-attachments, which
+                # make up the body of the messge. We aim to save only one of
+                # these
+                body_parts = {
+                    x.get_content_type(): x
+                    for x in filter(lambda x: not x.is_attachment(), msg.walk())
+                }
+
+                saved = False
+                for preferred_content_type in ["text/html", "text/plain"]:
+                    if preferred_content_type in body_parts.keys():
+                        self.__save_part__(
+                            msg=msg,
+                            part=body_parts[preferred_content_type],
+                            dest_dir=dest_dir,
+                            msg_name_as_filename=True,
+                            save_settings=merged_save_settings,
+                        )
+                        saved = True
+                        break
+
+                if not saved:
+                    raise ValueError(
+                        f"could not find message body in a preferred format, the available body part content types are {body_parts.keys()}"
+                    )
+
+            def part_is_matching_attachment(part):
+                # we've seen some messages where part.is_attachment(), but it is clearly an attachment,
+                # so we re-define an attachment as a part with a filename, even if it is not claiming
+                # to be an attachment
+                is_attachment = part.is_attachment() or part.get_filename()
+
+                if merged_save_settings.save_attachments == "*":
+                    result = is_attachment
+
+                else:
+                    result = is_attachment and fnmatch(
+                        part.get_filename(), merged_save_settings.save_attachments
+                    )
+
+                # logger.debug(
+                #     "part_is_matching_attachment(save_attachments=%s part.is_attachment=%s part.get_filename=%s is_attachment=%s) = %s",
+                #     merged_save_settings.save_attachments,
+                #     part.is_attachment(),
+                #     part.get_filename(),
+                #     is_attachment,
+                #     result,
+                # )
+                return result
+
+            if merged_save_settings.save_attachments:
+                for part in filter(
+                    part_is_matching_attachment,
+                    msg.walk(),
+                ):
+                    logger.debug("saving attachment %s", part.get_filename())
                     self.__save_part__(
                         msg=msg,
-                        part=body_parts[preferred_content_type],
+                        part=part,
                         dest_dir=dest_dir,
-                        msg_name_as_filename=True,
+                        counter=counter,
+                        msg_name_as_filename=False,
                         save_settings=merged_save_settings,
                     )
-                    saved = True
-                    break
+                    counter += 1
 
-            if not saved:
-                raise ValueError(
-                    f"could not find message body in a preferred format, the available body part content types are {body_parts.keys()}"
+            if merged_save_settings.save_eml:
+                logger.debug("saving message EML")
+                # finally, write the entire message to a file in the new directory
+                message_file_name = f"{message_name}.eml"
+                message_path = os.path.join(dest_dir, message_file_name)
+
+                if os.path.exists(message_path):
+                    raise ValueError(f"path {message_path} exists, aborting")
+
+                with open(message_path, "wb") as f:
+                    f.write(msg.as_bytes())
+                    logger.debug("saved %s", message_file_name)
+
+            # Once all files are written we examine whether
+            # flatten_single_file_messages is enabled, and decide to flatten
+            # based on the contents of dest_dir.
+            if merged_save_settings.flatten_single_file_messages:
+                saved_files = os.listdir(dest_dir)
+                new_dest_dir = os.path.expanduser(
+                    os.path.expandvars(merged_save_settings.path)
                 )
 
-        def part_is_matching_attachment(part):
-            # we've seen some messages where part.is_attachment(), but it is clearly an attachment,
-            # so we re-define an attachment as a part with a filename, even if it is not claiming
-            # to be an attachment
-            is_attachment = part.is_attachment() or part.get_filename()
+                if len(saved_files) == 1:
+                    logger.debug("flattening save dir into single file")
+                    # if a single file, then move to parent dir with same ext
+                    ext = saved_files[0][saved_files[0].rindex(".") :]
 
-            if merged_save_settings.save_attachments == "*":
-                result = is_attachment
+                    message_single_file_name = f"{message_name}{ext}"
+                    shutil.move(
+                        os.path.join(dest_dir, saved_files[0]),
+                        os.path.join(new_dest_dir, message_single_file_name),
+                    )
+                    shutil.rmtree(dest_dir)
 
-            else:
-                result = is_attachment and fnmatch(
-                    part.get_filename(), merged_save_settings.save_attachments
-                )
-
-            # logger.debug(
-            #     "part_is_matching_attachment(save_attachments=%s part.is_attachment=%s part.get_filename=%s is_attachment=%s) = %s",
-            #     merged_save_settings.save_attachments,
-            #     part.is_attachment(),
-            #     part.get_filename(),
-            #     is_attachment,
-            #     result,
-            # )
-            return result
-
-        if merged_save_settings.save_attachments:
-            for part in filter(
-                part_is_matching_attachment,
-                msg.walk(),
-            ):
-                logger.debug("saving attachment %s", part.get_filename())
-                self.__save_part__(
-                    msg=msg,
-                    part=part,
-                    dest_dir=dest_dir,
-                    counter=counter,
-                    msg_name_as_filename=False,
-                    save_settings=merged_save_settings,
-                )
-                counter += 1
-
-        if merged_save_settings.save_eml:
-            logger.debug("saving message EML")
-            # finally, write the entire message to a file in the new directory
-            message_file_name = f"{message_name}.eml"
-            message_path = os.path.join(dest_dir, message_file_name)
-
-            if os.path.exists(message_path):
-                raise ValueError(f"path {message_path} exists, aborting")
-
-            with open(message_path, "wb") as f:
-                f.write(msg.as_bytes())
-                logger.debug("saved %s", message_file_name)
-
-        # Once all files are written we examine whether
-        # flatten_single_file_messages is enabled, and decide to flatten
-        # based on the contents of dest_dir.
-        if merged_save_settings.flatten_single_file_messages:
-            saved_files = os.listdir(dest_dir)
-            new_dest_dir = os.path.expanduser(
-                os.path.expandvars(merged_save_settings.path)
-            )
-
-            if len(saved_files) == 1:
-                logger.debug("flattening save dir into single file")
-                # if a single file, then move to parent dir with same ext
-                ext = saved_files[0][saved_files[0].rindex(".") :]
-
-                message_single_file_name = f"{message_name}{ext}"
-                shutil.move(
-                    os.path.join(dest_dir, saved_files[0]),
-                    os.path.join(new_dest_dir, message_single_file_name),
-                )
-                shutil.rmtree(dest_dir)
+        except Exception as ex:
+            raise MessageSaveException(message_name) from ex
 
     def __save_part__(
         self,

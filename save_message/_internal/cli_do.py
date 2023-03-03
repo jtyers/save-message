@@ -1,6 +1,9 @@
 import logging
+import traceback
 
 from save_message.maildir import Maildir
+from save_message.maildir import MaildirMessage
+from save_message.save import MessageSaveException
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +20,31 @@ def do_delete(args):
 
 def do_apply_rules(args):
     maildir: Maildir = args.og.provide(Maildir)
+    exceptions: list[tuple[str, MaildirMessage, Exception]] = []
 
     for k, m in maildir.search(
         subject=args.subject, from_=args.from_, to=args.to, date=args.date
     ):
-        logger.info(f'apply_rules: {k}: {m["date"], m["from"], m["subject"]}')
-        maildir.apply_rules(k)
+        try:
+            logger.info(f'apply_rules: {k}: {m["date"], m["from"], m["subject"]}')
+            maildir.apply_rules(k)
+
+        except Exception as ex:
+            exceptions.append((k, m, ex))
+
+    if exceptions:
+        print("")
+        print("The following messages encountered errors:")
+
+        for k, m, ex in exceptions:
+            if isinstance(ex, MessageSaveException):
+                print(ex.message_name)
+
+            else:
+                print(m["date"], m["from"], m["subject"])
+
+            for line in traceback.format_exception(None, ex, ex.__traceback__):
+                print("  " + line)
 
 
 def do_search(args):
