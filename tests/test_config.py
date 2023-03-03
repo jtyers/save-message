@@ -30,8 +30,9 @@ def test_config(temp_save_dir):
                 path: /foo/bar
             action: IGNORE
 
-        maildir:
-            path: /mail
+        maildirs:
+           - path: /mail
+           - path: /mail-again
 
         save_rules:
             - matches:
@@ -60,7 +61,10 @@ def test_config(temp_save_dir):
     """,
     )
     assert config == Config(
-        maildir=ConfigMaildir(path="/mail"),
+        maildirs=[
+            ConfigMaildir(path="/mail"),
+            ConfigMaildir(path="/mail-again"),
+        ],
         default_settings=RuleSettings(
             save_settings=RuleSaveSettings(
                 path="/foo/bar",

@@ -1,3 +1,4 @@
+from email.message import EmailMessage
 import pytest
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -15,13 +16,12 @@ from save_message import maildir
 @pytest.fixture
 @patch("mailbox.Maildir")
 def maildir_(md):
-    config = MagicMock()
     args = MagicMock()
     rules_matcher = MagicMock(spec=RulesMatcher)
     message_saver = MagicMock(spec=MessageSaver)
 
     return maildir.Maildir(
-        config=config,
+        path="foo",
         args=args,
         rules_matcher=rules_matcher,
         message_saver=message_saver,
@@ -106,18 +106,14 @@ def do_apply_rules_test(
     should_delete: bool,
 ):
     key = "key-123456abc"
-    message = {
-        "date": "yesterday",
-        "from": "jonny@example.com",
-        "subject": "My test message",
-    }
-    email_message = {
-        "em_date": "yesterday",
-        "em_from": "jonny@example.com",
-        "em_subject": "My test message",
-    }
-    message_from_string.return_value = email_message
-
+    message = MagicMock(
+        spec=EmailMessage,
+        **{
+            "date": "yesterday",
+            "from": "jonny@example.com",
+            "subject": "My test message",
+        }
+    )
     maildir_.maildir.get.return_value = message
     maildir_.rules_matcher.match_save_rule.return_value = rule
 
@@ -126,7 +122,6 @@ def do_apply_rules_test(
     maildir_.apply_rules(key)
 
     maildir_.maildir.get.assert_called_with(key)
-    message_from_string.assert_called_with(str(message), policy=default)
 
     if should_delete:
         maildir_.delete.assert_called_with(key)
@@ -134,7 +129,7 @@ def do_apply_rules_test(
         maildir_.delete.assert_not_called
 
     if should_save:
-        maildir_.message_saver.save_message.assert_called_with(email_message, rule)
+        maildir_.message_saver.save_message.assert_called_with(message, rule)
     else:
         maildir_.message_saver.save_message.assert_not_called
 

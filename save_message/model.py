@@ -236,7 +236,7 @@ class Config(BaseModel):
 
     default_settings: RuleSettings = None
 
-    maildir: ConfigMaildir
+    maildirs: list[ConfigMaildir] = []
 
     body: ConfigBody = None
 

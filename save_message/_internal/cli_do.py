@@ -2,6 +2,7 @@ import logging
 import traceback
 
 from save_message.maildir import Maildir
+from save_message.maildir import Maildirs
 from save_message.maildir import MaildirMessage
 from save_message.save import MessageSaveException
 
@@ -9,28 +10,30 @@ logger = logging.getLogger(__name__)
 
 
 def do_delete(args):
-    maildir: Maildir = args.og.provide(Maildir)
+    maildirs: list[Maildir] = args.og.provide(Maildirs).get_maildirs()
 
-    for k, m in maildir.search(
-        subject=args.subject, from_=args.from_, to=args.to, date=args.date
-    ):
-        logger.info(f'deleting: {k}: {m["date"], m["from"], m["subject"]}')
-        maildir.delete(k)
+    for maildir in maildirs:
+        for k, m in maildir.search(
+            subject=args.subject, from_=args.from_, to=args.to, date=args.date
+        ):
+            logger.info(f'deleting: {k}: {m["date"], m["from"], m["subject"]}')
+            maildir.delete(k)
 
 
 def do_apply_rules(args):
-    maildir: Maildir = args.og.provide(Maildir)
+    maildirs: list[Maildir] = args.og.provide(Maildirs).get_maildirs()
     exceptions: list[tuple[str, MaildirMessage, Exception]] = []
 
-    for k, m in maildir.search(
-        subject=args.subject, from_=args.from_, to=args.to, date=args.date
-    ):
-        try:
-            logger.info(f'apply_rules: {k}: {m["date"], m["from"], m["subject"]}')
-            maildir.apply_rules(k)
+    for maildir in maildirs:
+        for k, m in maildir.search(
+            subject=args.subject, from_=args.from_, to=args.to, date=args.date
+        ):
+            try:
+                logger.info(f'apply_rules: {k}: {m["date"], m["from"], m["subject"]}')
+                maildir.apply_rules(k)
 
-        except Exception as ex:
-            exceptions.append((k, m, ex))
+            except Exception as ex:
+                exceptions.append((k, m, ex))
 
     if exceptions:
         print("")
@@ -48,9 +51,10 @@ def do_apply_rules(args):
 
 
 def do_search(args):
-    maildir: Maildir = args.og.provide(Maildir)
+    maildirs: list[Maildir] = args.og.provide(Maildirs).get_maildirs()
 
-    for k, m in maildir.search(
-        subject=args.subject, from_=args.from_, to=args.to, date=args.date
-    ):
-        logger.info(f'found: {k}: {m["date"], m["from"], m["subject"]}')
+    for maildir in maildirs:
+        for k, m in maildir.search(
+            subject=args.subject, from_=args.from_, to=args.to, date=args.date
+        ):
+            logger.info(f'found: {k}: {m["date"], m["from"], m["subject"]}')

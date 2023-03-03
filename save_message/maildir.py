@@ -28,18 +28,17 @@ def make_EmailMessage(f):
 class Maildir:
     def __init__(
         self,
-        config: Config,
+        path: str,
         args: Namespace,
         rules_matcher: RulesMatcher,
         message_saver: MessageSaver,
     ):
-        self.config = config
         self.args = args
         self.rules_matcher = rules_matcher
         self.message_saver = message_saver
 
         self.maildir = mailbox.Maildir(
-            dirname=config.maildir.path, create=False, factory=make_EmailMessage
+            dirname=path, create=False, factory=make_EmailMessage
         )
 
     def get(self, key: str):
@@ -65,7 +64,6 @@ class Maildir:
 
     def apply_rules(self, key):
         msg = self.get(key)
-        # email_msg = message_from_string(str(msg), policy=default)
         assert isinstance(msg, EmailMessage)
 
         rule = self.rules_matcher.match_save_rule(msg)
@@ -98,10 +96,10 @@ class Maildir:
 
     def search(
         self,
-        subject: str = None,
-        from_: str = None,
-        to: str = None,
-        date: datetime = None,
+        subject: str | None = None,
+        from_: str | None = None,
+        to: str | None = None,
+        date: datetime | None = None,
     ) -> Generator[MaildirMessage, None, None]:
         counter = 0
 
@@ -139,3 +137,28 @@ class Maildir:
                 )
 
                 # raise ex
+
+
+class Maildirs:
+    def __init__(
+        self,
+        config: Config,
+        args: Namespace,
+        rules_matcher: RulesMatcher,
+        message_saver: MessageSaver,
+    ):
+        self.config = config
+        self.args = args
+        self.rules_matcher = rules_matcher
+        self.message_saver = message_saver
+
+    def get_maildirs(self) -> list[Maildir]:
+        return [
+            Maildir(
+                path=m.path,
+                args=self.args,
+                rules_matcher=self.rules_matcher,
+                message_saver=self.message_saver,
+            )
+            for m in self.config.maildirs
+        ]
