@@ -148,21 +148,22 @@ class RuleSettings(BaseModel):
     delete_confirmation: bool = True
 
     # settings for saving (if action includes this)
-    save_settings: RuleSaveSettings = None
+    save_settings: RuleSaveSettings | None = None
 
 
 class RuleMatch(BaseModel):
     class Config:
         extra = "forbid"
 
-    # match on the subject, from and to fields
+    # match on the subject, body, from and to fields
     # Match values are treated as globs and passed to fnmatch, unless the
     # match value is enclosed in forward slashes, in which case it's treated
     # as a regex.
-    subject: str = None
-    from_: str = None
-    to: str = None
-    date: str = None
+    subject: str | None = None
+    from_: str | None = None
+    to: str | None = None
+    date: str | None = None
+    body: str | None = None
 
 
 class SaveRule(BaseModel):

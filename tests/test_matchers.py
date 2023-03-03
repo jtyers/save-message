@@ -9,6 +9,7 @@ from tests.util import create_message
 from save_message.matchers import AndMatcher
 from save_message.matchers import OrMatcher
 from save_message.matchers import SubjectMatcher
+from save_message.matchers import BodyMatcher
 from save_message.matchers import FromMatcher
 from save_message.matchers import DateMatcher
 from save_message.matchers import ToMatcher
@@ -25,8 +26,13 @@ def temp_save_dir() -> str:
     shutil.rmtree(result)
 
 
-def do_or_matcher_test(expected: bool, matchers: list[Matcher], **msg_args):
-    msg = create_message(template="simple_text_only", **msg_args)
+def do_or_matcher_test(
+    expected: bool,
+    matchers: list[Matcher],
+    template: str = "simple_text_only",
+    **msg_args
+):
+    msg = create_message(template=template, **msg_args)
 
     matcher_set = OrMatcher(matchers=matchers)
 
@@ -64,6 +70,42 @@ def test_subject_with_newline_does_not_match_after_newline():
     do_or_matcher_test(
         subject="Foo bar\nbaz",
         matchers=[SubjectMatcher(match_subject="Foo *baz")],
+        expected=False,
+    )
+
+
+def test_body():
+    do_or_matcher_test(
+        # Contains "Thank you for using Amazon Web Services!"
+        template="simple_text_only",
+        subject="",
+        matchers=[BodyMatcher(match_body="Thank you for using Amazon Web Services!")],
+        expected=True,
+    )
+
+
+def test_body_over_newline():
+    do_or_matcher_test(
+        subject="",
+        matchers=[
+            BodyMatcher(
+                match_body="""Dear AWS Customer,
+
+Thank you for using Amazon Web Services!"""
+            )
+        ],
+        expected=True,
+    )
+
+
+def test_body_with_newline_does_not_match_after_newline():
+    do_or_matcher_test(
+        subject="",
+        matchers=[
+            BodyMatcher(
+                match_body="Dear AWS Customer, Thank you for using Amazon Web Services!"
+            )
+        ],
         expected=False,
     )
 
@@ -122,6 +164,7 @@ def test_all_fields_save_rule(temp_save_dir):
                 to="test@example.com",
                 from_="*@from.com",
                 date=now.strftime("%c"),
+                body="Thank you for using Amazon Web Services!",
             ),
         ],
         expected=OrMatcher(
@@ -132,6 +175,9 @@ def test_all_fields_save_rule(temp_save_dir):
                         ToMatcher(match_to="test@example.com"),
                         FromMatcher(match_from="*@from.com"),
                         DateMatcher(match_date=now.strftime("%c")),
+                        BodyMatcher(
+                            match_body="Thank you for using Amazon Web Services!"
+                        ),
                     ]
                 )
             ]
