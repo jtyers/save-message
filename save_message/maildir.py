@@ -15,6 +15,7 @@ from save_message.model import MessageAction
 from save_message.model import RuleMatch
 from save_message.rules import RulesMatcher
 from save_message.save import MessageSaver
+from save_message.actions.actions import MessageActions
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,12 @@ class Maildir:
         args: Namespace,
         rules_matcher: RulesMatcher,
         message_saver: MessageSaver,
+        message_actions: MessageActions,
     ):
         self.args = args
         self.rules_matcher = rules_matcher
         self.message_saver = message_saver
+        self.message_actions = message_actions
 
         self.maildir = mailbox.Maildir(
             dirname=path, create=False, factory=make_EmailMessage
@@ -63,36 +66,7 @@ class Maildir:
                 print("  skipped delete")
 
     def apply_rules(self, key):
-        msg = self.get(key)
-        assert isinstance(msg, EmailMessage)
-
-        rule = self.rules_matcher.match_save_rule(msg)
-
-        if rule.settings.action == MessageAction.KEEP:
-            logger.debug("apply_rules: %s matches %s", key, rule.matches)
-
-            self.message_saver.save_message(msg, rule)
-
-        elif rule.settings.action == MessageAction.IGNORE:
-            # logger.debug("apply_rules: %s matches %s", key, rule)
-
-            pass  # do nothing
-
-        elif rule.settings.action == MessageAction.SAVE_AND_DELETE:
-            logger.debug("apply_rules: %s matches %s", key, rule.matches)
-
-            self.message_saver.save_message(msg, rule)
-            self.delete(key, force=not rule.settings.delete_confirmation)
-
-        elif rule.settings.action == MessageAction.DELETE:
-            logger.debug("apply_rules: %s matches %s", key, rule.matches)
-
-            self.delete(key, force=not rule.settings.delete_confirmation)
-
-        else:
-            raise ValueError(f"unhandled MessageAction {rule.action}")
-
-        logger.debug("rule: %s", rule)
+        self.message_actions.apply_rules(self, key)
 
     def search(
         self,
@@ -146,11 +120,13 @@ class Maildirs:
         args: Namespace,
         rules_matcher: RulesMatcher,
         message_saver: MessageSaver,
+        message_actions: MessageActions,
     ):
         self.config = config
         self.args = args
         self.rules_matcher = rules_matcher
         self.message_saver = message_saver
+        self.message_actions = message_actions
 
     def get_maildirs(self) -> list[Maildir]:
         return [
@@ -159,6 +135,7 @@ class Maildirs:
                 args=self.args,
                 rules_matcher=self.rules_matcher,
                 message_saver=self.message_saver,
+                message_actions=self.message_actions,
             )
             for m in self.config.maildirs
         ]

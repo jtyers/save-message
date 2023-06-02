@@ -14,7 +14,6 @@ import shutil
 import subprocess
 import tempfile
 
-from save_message.rules import RulesMatcher
 from save_message.model import Config
 from save_message.model import RuleSaveSettings
 from save_message.model import SaveRule
@@ -204,11 +203,17 @@ class MessageSaver:
         self.config = config
         self.message_part_saver = message_part_saver
 
-    def save_message(self, msg: EmailMessage, rule: SaveRule):
+    def save_message(
+        self,
+        msg: EmailMessage,
+        rule: SaveRule,
+    ) -> tuple[str | None, list[str]]:
         """Save the message in `input_file`, using rules to determine
         where to save. The rule is the rule whose actions should
         be applied; default_settings.save_settings are also taken  (from
         Config) into account.
+
+        Returns ( body_filename, attachment_filenames ) as a tuple.
 
         """
         merged_save_settings = merge_models(
@@ -216,6 +221,9 @@ class MessageSaver:
         )
         message_name = get_message_name(msg, fmt=merged_save_settings.message_name)
         logger.debug("merged_save_settings=%s", merged_save_settings)
+
+        body_filename = None
+        attachment_filenames = []
 
         try:
             dest_dir = os.path.join(merged_save_settings.path, message_name)
@@ -251,7 +259,7 @@ class MessageSaver:
                 saved = False
                 for preferred_content_type in ["text/html", "text/plain"]:
                     if preferred_content_type in body_parts.keys():
-                        self.__save_part__(
+                        body_filename = self.__save_part__(
                             msg=msg,
                             part=body_parts[preferred_content_type],
                             dest_dir=dest_dir,
@@ -263,13 +271,14 @@ class MessageSaver:
 
                 if not saved:
                     raise ValueError(
-                        f"could not find message body in a preferred format, the available body part content types are {body_parts.keys()}"
+                        "could not find message body in a preferred format, the "
+                        f"available body part content types are {body_parts.keys()}"
                     )
 
             def part_is_matching_attachment(part):
-                # we've seen some messages where part.is_attachment(), but it is clearly an attachment,
-                # so we re-define an attachment as a part with a filename, even if it is not claiming
-                # to be an attachment
+                # we've seen some messages where part.is_attachment(), but it is clearly
+                # an attachment, so we re-define an attachment as a part with a
+                # filename, even if it is not claiming to be an attachment
                 is_attachment = part.is_attachment() or part.get_filename()
 
                 if merged_save_settings.save_attachments == "*":
@@ -281,7 +290,8 @@ class MessageSaver:
                     )
 
                 # logger.debug(
-                #     "part_is_matching_attachment(save_attachments=%s part.is_attachment=%s part.get_filename=%s is_attachment=%s) = %s",
+                #     "part_is_matching_attachment(save_attachments=%s"
+                #     "part.is_attachment=%s part.get_filename=%s is_attachment=%s)=%s",
                 #     merged_save_settings.save_attachments,
                 #     part.is_attachment(),
                 #     part.get_filename(),
@@ -296,13 +306,15 @@ class MessageSaver:
                     msg.walk(),
                 ):
                     logger.debug("saving attachment %s", part.get_filename())
-                    self.__save_part__(
-                        msg=msg,
-                        part=part,
-                        dest_dir=dest_dir,
-                        counter=counter,
-                        msg_name_as_filename=False,
-                        save_settings=merged_save_settings,
+                    attachment_filenames.append(
+                        self.__save_part__(
+                            msg=msg,
+                            part=part,
+                            dest_dir=dest_dir,
+                            counter=counter,
+                            msg_name_as_filename=False,
+                            save_settings=merged_save_settings,
+                        )
                     )
                     counter += 1
 
@@ -334,11 +346,21 @@ class MessageSaver:
                     ext = saved_files[0][saved_files[0].rindex(".") :]
 
                     message_single_file_name = f"{message_name}{ext}"
-                    shutil.move(
-                        os.path.join(dest_dir, saved_files[0]),
-                        os.path.join(new_dest_dir, message_single_file_name),
-                    )
+                    src = os.path.join(dest_dir, saved_files[0])
+                    dst = os.path.join(new_dest_dir, message_single_file_name)
+                    shutil.move(src, dst)
+
+                    # update any filename refs to the correct name
+                    if body_filename == src:
+                        body_filename = dst
+
+                    for i in range(0, len(attachment_filenames)):
+                        if attachment_filenames[i] == src:
+                            attachment_filenames[i] = dst
+
                     shutil.rmtree(dest_dir)
+
+            return body_filename, attachment_filenames
 
         except Exception as ex:
             raise MessageSaveException(message_name) from ex
@@ -351,7 +373,7 @@ class MessageSaver:
         msg_name_as_filename: bool,
         save_settings: RuleSaveSettings,
         counter=None,
-    ):
+    ) -> str:
         msg_name = get_message_name(msg, save_settings.message_name)
         filename, ext = get_filename_for_part(
             msg_name, part, counter, msg_name_as_filename=msg_name_as_filename
@@ -371,9 +393,12 @@ class MessageSaver:
                 dest_path=dest_path,
                 html_pdf_transform_command=save_settings.html_pdf_transform_command,
             )
+
         else:
             self.message_part_saver.save_part(
                 msg=msg,
                 part=part,
                 dest_path=dest_path,
             )
+
+        return dest_path
