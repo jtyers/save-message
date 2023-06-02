@@ -9,7 +9,7 @@ from save_message.model import MessageAction
 from save_message.model import RuleSettings
 from save_message.model import SaveRule
 from save_message.rules import RulesMatcher
-from save_message.save import MessageSaver
+from save_message.actions.actions import MessageActions
 from save_message import maildir
 
 
@@ -18,13 +18,13 @@ from save_message import maildir
 def maildir_(md):
     args = MagicMock()
     rules_matcher = MagicMock(spec=RulesMatcher)
-    message_saver = MagicMock(spec=MessageSaver)
+    message_actions = MagicMock(spec=MessageActions)
 
     return maildir.Maildir(
         path="foo",
         args=args,
         rules_matcher=rules_matcher,
-        message_saver=message_saver,
+        message_actions=message_actions,
     )
 
 
@@ -105,6 +105,7 @@ def do_apply_rules_test(
     should_save: bool,
     should_delete: bool,
 ):
+    # given
     key = "key-123456abc"
     message = MagicMock(
         spec=EmailMessage,
@@ -119,22 +120,14 @@ def do_apply_rules_test(
 
     maildir_.delete = MagicMock()
 
+    # when
     maildir_.apply_rules(key)
 
-    maildir_.maildir.get.assert_called_with(key)
-
-    if should_delete:
-        maildir_.delete.assert_called_with(key)
-    else:
-        maildir_.delete.assert_not_called
-
-    if should_save:
-        maildir_.message_saver.save_message.assert_called_with(message, rule)
-    else:
-        maildir_.message_saver.save_message.assert_not_called
+    # then
+    maildir_.message_actions.apply_rules.assert_called_with(maildir_, key)
 
 
-def test_apply_rules_with_keep_action(maildir_):
+def test_apply_rules(maildir_):
     rule = MagicMock(spec=SaveRule)
     rule.settings = MagicMock(spec=RuleSettings)
     rule.settings.action = MessageAction.KEEP

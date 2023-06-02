@@ -14,7 +14,6 @@ from save_message.model import Config
 from save_message.model import MessageAction
 from save_message.model import RuleMatch
 from save_message.rules import RulesMatcher
-from save_message.save import MessageSaver
 from save_message.actions.actions import MessageActions
 
 logger = logging.getLogger(__name__)
@@ -32,12 +31,10 @@ class Maildir:
         path: str,
         args: Namespace,
         rules_matcher: RulesMatcher,
-        message_saver: MessageSaver,
         message_actions: MessageActions,
     ):
         self.args = args
         self.rules_matcher = rules_matcher
-        self.message_saver = message_saver
         self.message_actions = message_actions
 
         self.maildir = mailbox.Maildir(
@@ -119,13 +116,11 @@ class Maildirs:
         config: Config,
         args: Namespace,
         rules_matcher: RulesMatcher,
-        message_saver: MessageSaver,
         message_actions: MessageActions,
     ):
         self.config = config
         self.args = args
         self.rules_matcher = rules_matcher
-        self.message_saver = message_saver
         self.message_actions = message_actions
 
     def get_maildirs(self) -> list[Maildir]:
@@ -134,7 +129,6 @@ class Maildirs:
                 path=m.path,
                 args=self.args,
                 rules_matcher=self.rules_matcher,
-                message_saver=self.message_saver,
                 message_actions=self.message_actions,
             )
             for m in self.config.maildirs
