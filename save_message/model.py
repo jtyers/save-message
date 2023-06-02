@@ -163,6 +163,7 @@ class RuleMatch(BaseModel):
     from_: str | None = None
     to: str | None = None
     date: str | None = None
+    age: str | None = None
     body: str | None = None
 
 

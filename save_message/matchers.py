@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import timedelta
 from dateutil.parser import parse
 from email.header import Header
 from email.message import EmailMessage
@@ -6,6 +7,7 @@ from email.utils import parseaddr
 from mailbox import MaildirMessage
 import pudb
 import re
+import pytimeparse
 
 from save_message.model import RuleMatch
 
@@ -199,7 +201,10 @@ class ToMatcher(WildcardMatcher):
 
 class DateMatcher(Matcher):
     def __init__(self, match_date: datetime):
-        self.match_date = parse(match_date)
+        if isinstance(match_date, datetime):
+            self.match_date = match_date
+        else:
+            self.match_date = parse(match_date)
 
     def __repr__(self):
         return f"DateMatcher(match_date={self.match_date})"
@@ -213,6 +218,29 @@ class DateMatcher(Matcher):
         return (
             other is not None
             and type(other) is DateMatcher
+            and other.match_date == self.match_date
+        )
+
+
+class AgeMatcher(Matcher):
+    def __init__(self, spec: str):
+        print(spec, pytimeparse.parse(spec))
+        self.match_date = datetime.now() - timedelta(seconds=pytimeparse.parse(spec))
+
+    def __repr__(self):
+        return f"AgeMatcher(match_date={self.match_date})"
+
+    def matches(self, msg: MaildirMessage) -> bool:
+        msg_date = parse(msg["date"])
+
+        # need to compare timestamps, otherwise we get
+        # "can't compare offset-aware and offset-naive datetimes"
+        return self.match_date.timestamp() >= msg_date.timestamp()
+
+    def __eq__(self, other) -> bool:
+        return (
+            other is not None
+            and type(other) is AgeMatcher
             and other.match_date == self.match_date
         )
 
@@ -284,6 +312,8 @@ def rule_matches_to_matcher(rule_matches: list[RuleMatch]) -> Matcher:
             matchers.append(FromMatcher(match_from=rule_match.from_))
         if rule_match.date:
             matchers.append(DateMatcher(match_date=rule_match.date))
+        if rule_match.age:
+            matchers.append(AgeMatcher(spec=rule_match.age))
         if rule_match.body:
             matchers.append(BodyMatcher(match_body=rule_match.body))
 

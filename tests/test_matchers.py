@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import timedelta
 import pytest
 import shutil
 import tempfile
@@ -12,6 +13,7 @@ from save_message.matchers import SubjectMatcher
 from save_message.matchers import BodyMatcher
 from save_message.matchers import FromMatcher
 from save_message.matchers import DateMatcher
+from save_message.matchers import AgeMatcher
 from save_message.matchers import ToMatcher
 from save_message.matchers import Matcher
 from save_message.matchers import rule_matches_to_matcher
@@ -122,6 +124,24 @@ def test_to_address():
     do_or_matcher_test(
         to="Jonny T <jonny@example.com>",
         matchers=[ToMatcher(match_to="Jonny T <jonny@example.com>")],
+        expected=True,
+    )
+
+
+def test_age_negative():
+    do_or_matcher_test(
+        to="Jonny T <jonny@example.com>",
+        matchers=[AgeMatcher("1d")],
+        date=datetime.now().strftime("%c"),
+        expected=False,
+    )
+
+
+def test_age_positive():
+    do_or_matcher_test(
+        to="Jonny T <jonny@example.com>",
+        matchers=[AgeMatcher("1d")],
+        date=(datetime.now() - timedelta(days=2)).strftime("%c"),
         expected=True,
     )
 
