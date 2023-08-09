@@ -6,6 +6,9 @@ from save_message.model import MessageAction
 from save_message.rules import RulesMatcher
 from save_message.rules import SaveRule
 from save_message.actions.save_and_delete_action import SaveAndDeleteRuleAction
+from save_message.actions.keep_action import KeepRuleAction
+from save_message.actions.ignore_action import IgnoreRuleAction
+from save_message.actions.delete_action import DeleteRuleAction
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +37,16 @@ class MessageActions:
     def __init__(
         self,
         save_and_delete_rule_action: SaveAndDeleteRuleAction,
+        keep_rule_action: KeepRuleAction,
+        ignore_rule_action: IgnoreRuleAction,
+        delete_rule_action: DeleteRuleAction,
         rules_matcher: RulesMatcher,
     ):
         self.actions = [
             save_and_delete_rule_action,
+            keep_rule_action,
+            ignore_rule_action,
+            delete_rule_action,
         ]
         self.rules_matcher = rules_matcher
 
