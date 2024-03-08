@@ -61,7 +61,7 @@ def guess_ext_for_part(part):
 
 def get_filename_for_part(
     message_name: str, part: MIMEPart, counter: int, msg_name_as_filename: bool = False
-):
+) -> tuple[str, str]:
     if msg_name_as_filename:
         part_filename = part.get_filename()
 
@@ -69,7 +69,7 @@ def get_filename_for_part(
             ext = part_filename[part_filename.index(".") :]
         else:
             ext = guess_ext_for_part(part)
-        filename = f"{message_name}{ext}"
+        filename = message_name
 
     else:
         filename = part.get_filename()
@@ -77,15 +77,15 @@ def get_filename_for_part(
         if filename:
             if "." in filename:
                 ext = filename[filename.index(".") :]
-                filename = sanitize_to_filename(filename[: filename.index(".")]) + ext
+                filename = sanitize_to_filename(filename[: filename.index(".")])
 
             else:
                 ext = guess_ext_for_part(part)
-                filename = sanitize_to_filename(filename) + ext
+                filename = sanitize_to_filename(filename)
 
         else:
             ext = guess_ext_for_part(part)
-            filename = f"{message_name}-{counter:02d}{ext}"
+            filename = f"{message_name}-{counter:02d}"
 
     return filename, ext
 
@@ -348,6 +348,15 @@ class MessageSaver:
                     message_single_file_name = f"{message_name}{ext}"
                     src = os.path.join(dest_dir, saved_files[0])
                     dst = os.path.join(new_dest_dir, message_single_file_name)
+
+                    counter = 2
+                    while os.path.exists(dst):
+                        counter_str = "%d" % (counter)
+                        message_single_file_name = (
+                            f"{message_name} ({counter_str}){ext}"
+                        )
+                        dst = os.path.join(new_dest_dir, message_single_file_name)
+
                     shutil.move(src, dst)
 
                     # update any filename refs to the correct name
@@ -378,7 +387,15 @@ class MessageSaver:
         filename, ext = get_filename_for_part(
             msg_name, part, counter, msg_name_as_filename=msg_name_as_filename
         )
-        dest_path = os.path.join(dest_dir, filename)
+        dest_path = os.path.join(dest_dir, f"{filename}{ext}")
+
+        counter = 2
+        while os.path.exists(dest_path):
+            counter_str = "%d" % (counter)
+            filename, ext = get_filename_for_part(
+                msg_name, part, counter, msg_name_as_filename=msg_name_as_filename
+            )
+            dest_path = os.path.join(dest_dir, f"{filename} ({counter_str}){ext}")
 
         if (
             part.get_content_type() == "text/html"
